@@ -1,0 +1,887 @@
+diff --git a/components/ChallengeCardContainer/ChallengeCardContainer.jsx b/components/ChallengeCardContainer/ChallengeCardContainer.jsx
+new file mode 100644
+index 0000000..62ac184
+--- /dev/null
++++ b/components/ChallengeCardContainer/ChallengeCardContainer.jsx
+@@ -0,0 +1,224 @@
++/* global
++  sessionStorage, window
++*/
++
++/**
++ *  This component is responsbile for displaying and handling the interaction
++ *  of challenges contained in different categories.
++ *
++ *  It will handle the expansion of each cateogry container to see more challenges
++ *  than the initial number which is 10 as well as the further expansion of the container.
++ *  if the user scrolls down to the last challenge in the state and there are
++ *  more challenges, additional 50 challenges will be fetched.
++ *
++ *  It will also handle sorting in each cateogry container and store the setting
++ *  in sessionStorage. It will load the setting if it exists at the begining.
++ *
++ *  It loads from files, filters.js and sortingFunctionStore.js, to know the filter
++ *  categories and their information as well as all the sorting options for each
++ *  filter category.
++ */
++
++import _ from 'lodash';
++import React, { Component } from 'react';
++import VisibilitySensor from 'react-visibility-sensor';
++import ChallengeCard from '../ChallengeCard/ChallengeCard';
++import SortingSelectBar from './SortingSelectBar/SortingSelectBar';
++import defaultFilters from './filters';
++import defaultSortingFunctionStore from './sortingFunctionStore';
++import {
++  getFilterChallengesStore,
++  findFilterByName,
++  getFilterSortingStore,
++  fetchAdditionalChallenges,
++  filterFilterChallengesStore,
++  getMaxWindowScrollY,
++} from './ChallengeCardContainerHelpers';
++import './ChallengeCardContainer.scss';
++
++const { arrayOf, object, shape, func, string, bool, oneOfType } = React.PropTypes;
++
++class ChallengeCardContainer extends Component {
++  constructor(props) {
++    super(props);
++    const { challenges, filters, currentFilterName, expanded } = props;
++    let userSessionFilterSortingStore;
++
++    if (sessionStorage && sessionStorage.challengeFilterSortingStore) {
++      userSessionFilterSortingStore = JSON.parse(sessionStorage.challengeFilterSortingStore);
++    }
++
++    this.state = {
++      filterChallengesStore: getFilterChallengesStore(filters, challenges),
++      currentFilter: findFilterByName(currentFilterName, filters),
++      filterSortingStore: getFilterSortingStore(filters, userSessionFilterSortingStore),
++      sortingFunctionStore: defaultSortingFunctionStore,
++      expanded,
++    };
++  }
++
++  componentWillReceiveProps(nextProps) {
++    const { challenges, filters, currentFilterName, expanded } = nextProps;
++    const { filterSortingStore } = this.state;
++
++    this.setState({
++      filterChallengesStore: getFilterChallengesStore(filters, challenges),
++      currentFilter: findFilterByName(currentFilterName, filters),
++      filterSortingStore: getFilterSortingStore(filters, filterSortingStore),
++      expanded,
++    });
++  }
++
++  onExpandFilterResult(filterName) {
++    this.setState({
++      currentFilter: findFilterByName(filterName, this.props.filters),
++      expanded: true,
++    }, this.props.onExpandFilterResult);
++  }
++
++  onScrollChallenges(isLastChallengeVisible) {
++    if (!isLastChallengeVisible || this.loading) return;
++    const { currentFilter } = this.state;
++    const { filterChallengesStore } = this.state;
++    const maximumScrollY = getMaxWindowScrollY();
++
++    if (currentFilter && currentFilter.totalReached !== true) {
++      const pageIndex = currentFilter.currentPageIndex || 1;
++      this.loading = true;
++
++      fetchAdditionalChallenges({
++        filterChallengesStore,
++        filter: currentFilter,
++        pageIndex: (pageIndex + 1),
++        challenges: filterChallengesStore[currentFilter.name],
++        successCallback: (newFilterChallengesStore, filter) => (
++          this.setState(
++            { filterChallengesStore: newFilterChallengesStore, currentFilter: filter },
++            () => {
++              // NOTE: have to scroll by the increase of max scroll due to expansion
++              // of the category container because the browser will attempt to
++              // scroll to the bottom and thereby trigger almost an infinite loop
++              // of challenge fetches. This should definitely be improved in the future.
++              window.scrollBy(0, maximumScrollY - getMaxWindowScrollY());
++              this.loading = false;
++            },
++          )
++        ),
++      });
++    }
++  }
++
++  onSortingSelect(filterName, sortingOptionName) {
++    const filterSortingStore = _.assign(
++      {},
++      this.state.filterSortingStore,
++      { [filterName]: sortingOptionName },
++    );
++    sessionStorage.challengeFilterSortingStore = JSON.stringify(filterSortingStore);
++
++    this.setState({ filterSortingStore });
++  }
++
++  render() {
++    const initialNumberToShow = 10;
++    const { additionalFilter, filters } = this.props;
++    const { currentFilter, expanded, filterSortingStore, sortingFunctionStore } = this.state;
++    const visibilitySensor = !currentFilter.totalReached && expanded
++      ? <VisibilitySensor onChange={value => this.onScrollChallenges(value)} />
++      : null;
++    const loadingIndication = !currentFilter.totalReached && expanded
++      ? <h1 className="loading">Loading...</h1>
++      : null;
++    const filterChallengesStore = filterFilterChallengesStore(
++      this.state.filterChallengesStore,
++      currentFilter,
++      additionalFilter,
++    );
++
++    return (
++      <div className="challengeCardContainer">
++        {
++          Object.keys(filterChallengesStore).map((filterName) => {
++            let expansionButtion;
++            let challenges = _.sortBy(
++              filterChallengesStore[filterName],
++              [sortingFunctionStore[filterSortingStore[filterName]]],
++            );
++
++            const trimmedFilterName = filterName.replace(/\s+/g, '-').toLowerCase();
++            const filter = findFilterByName(filterName, filters);
++            const { sortingOptions } = filter;
++            const { length: challengeNumber } = challenges;
++
++            if (!expanded && challengeNumber > initialNumberToShow) {
++              challenges = challenges.slice(0, initialNumberToShow);
++              expansionButtion = (
++                <button
++                  onClick={() => this.onExpandFilterResult(filterName)}
++                  className="view-more"
++                >
++                  View {filterChallengesStore[filterName].length - 10} more challenges
++                </button>
++              );
++            }
++
++            return (
++              <div className="category-challenges-container example-lg" key={`${trimmedFilterName}-container`}>
++                <SortingSelectBar
++                  sortingOptions={sortingOptions}
++                  filterName={filterName}
++                  onSortingSelect={optionName => this.onSortingSelect(filterName, optionName)}
++                  value={filterSortingStore[filterName]}
++                  key={`${trimmedFilterName}-sorting-bar`}
++                />
++                {
++                  _.map(challenges, challenge => (
++                    <ChallengeCard
++                      challenge={challenge}
++                      onTechTagClicked={tag => this.props.onTechTagClicked(tag)}
++                      key={`${challenge.challengeId}-${trimmedFilterName}`}
++                    />
++                  ))
++                }
++                {expansionButtion}
++                {loadingIndication}
++                {visibilitySensor}
++              </div>
++            );
++          })
++        }
++      </div>
++    );
++  }
++}
++
++ChallengeCardContainer.defaultProps = {
++  onTechTagClicked: _.noop,
++  onExpandFilterResult: _.noop,
++  filters: defaultFilters,
++  additionalFilter() {
++    return true;
++  },
++  currentFilterName: '',
++  challenges: [],
++  expanded: false,
++};
++
++ChallengeCardContainer.propTypes = {
++  onTechTagClicked: func,
++  onExpandFilterResult: func,
++  additionalFilter: func,
++  challenges: arrayOf(object),
++  currentFilterName: string,
++  filters: arrayOf(shape({
++    check: func,
++    name: string,
++    apiEndpoint: string,
++    sortings: arrayOf(string),
++    allIncluded: bool,
++    info: object,
++  })),
++  expanded: oneOfType([bool, string]),
++};
++
++export default ChallengeCardContainer;
+diff --git a/components/ChallengeCardContainer/ChallengeCardContainer.scss b/components/ChallengeCardContainer/ChallengeCardContainer.scss
+new file mode 100644
+index 0000000..4f70d05
+--- /dev/null
++++ b/components/ChallengeCardContainer/ChallengeCardContainer.scss
+@@ -0,0 +1,35 @@
++@import '../../styles/tc-styles';
++@import 'topcoder/tc-includes';
++
++.challengeCardContainer {
++  border-radius: $base-unit;
++
++  .category-challenges-container {
++    background: $tc-gray-neutral-light;
++    margin: 20px 0;
++  }
++
++  .view-more {
++    width: 100%;
++    background: $tc-gray-neutral-light;
++    border-top: 1px solid $tc-gray-10;
++    border-bottom: 1px solid $tc-gray-10;
++    border-left: 0;
++    border-right: 0;
++    color: $tc-gray-50;
++    font-weight: 500;
++    text-transform: none;
++    border-radius: 0;
++    outline: none;
++  }
++
++  .loading {
++    bottom: 10px;
++    background: $tc-orange;
++    color: $tc-white;
++    width: 100%;
++    text-align: center;
++    padding-top: 5px;
++    margin: 0;
++  }
++}
+diff --git a/components/ChallengeCardContainer/ChallengeCardContainerHelpers.js b/components/ChallengeCardContainer/ChallengeCardContainerHelpers.js
+new file mode 100644
+index 0000000..37fb73e
+--- /dev/null
++++ b/components/ChallengeCardContainer/ChallengeCardContainerHelpers.js
+@@ -0,0 +1,161 @@
++/* global
++  document, fetch
++*/
++
++import _ from 'lodash';
++
++export function getFilterChallengesStore(filters, challenges) {
++  const nonAllInclusiveFilters = _.filter(filters, filter => (!filter.allIncluded));
++  const filterChallengesStore = nonAllInclusiveFilters.reduce(
++    (filterStore, filter) => _.set(filterStore, filter.name, []),
++    {},
++  );
++
++  return challenges.reduce((filterStore, challenge) => (
++    nonAllInclusiveFilters.reduce((store, filter) => {
++      if (filter.check(challenge)) store[filter.name].push(challenge);
++      return store;
++    }, filterStore)
++  ), filterChallengesStore);
++}
++
++export function getFilterSortingStore(filters, sortingSetting = {}) {
++  return filters.reduce((filterSortingStore, filter) => (
++    _.set(
++      filterSortingStore,
++      filter.name,
++      sortingSetting[filter.name] || filter.sortingOptions[0],
++    )
++  ), {});
++}
++
++export function filterFilterChallengesStore(
++  filterChallengesStore,
++  currentFilter,
++  additionalFilter,
++) {
++  const allFilters = [
++    (store) => {
++      if (currentFilter && !currentFilter.allIncluded) {
++        return _.pick(store, [currentFilter.name]);
++      }
++
++      return store;
++    },
++    _.partialRight(_.pickBy, challenges => !_.isEmpty(challenges)),
++    _.partialRight(_.mapValues, challenges => _.filter(challenges, additionalFilter)),
++  ];
++
++  return _.flow(allFilters)(_.assign({}, filterChallengesStore));
++}
++
++export function findFilterByName(filterName, filters) {
++  const foundfilter = _.find(filters, filter => filter.name === filterName);
++
++  if (foundfilter) return _.assign({}, foundfilter);
++  return foundfilter;
++}
++
++const challengesFetchCache = {};
++let fetchPromise = Promise.resolve();
++
++function handleChallengesFetchResult({
++  resJson,
++  filter,
++  challenges,
++  pageIndex,
++  filterChallengesStore,
++}) {
++  let { data: fetchedChallenges } = resJson;
++
++  fetchedChallenges = fetchedChallenges.map((challenge) => {
++    const formattedChallenge = _.assign({}, challenge);
++
++    formattedChallenge.track = challenge.challengeCommunity.toUpperCase();
++    formattedChallenge.subTrack = challenge.challengeType.toUpperCase().split(' ').join('_');
++
++    return formattedChallenge;
++  });
++
++  const newChallenges = _.uniqBy(_.concat(challenges, fetchedChallenges), 'challengeId');
++
++  const totalReached = newChallenges.length === challenges.length;
++  const newFilterChallengesStore = _.assign(
++    {},
++    filterChallengesStore,
++    { [filter.name]: newChallenges },
++  );
++
++  const newFilter = _.assign(
++    {},
++    filter,
++    { currentPageIndex: pageIndex, totalReached },
++  );
++
++  return { newFilterChallengesStore, newFilter, totalReached };
++}
++
++// fetch challenges and then fetch again to cache
++export function fetchAdditionalChallenges({
++    filter,
++    challenges,
++    pageIndex,
++    filterChallengesStore,
++    successCallback,
++    toCache,
++}) {
++  const { name: filterName } = filter;
++
++  // Check if there is cache and use it if there is
++  if (challengesFetchCache[filterName] && challengesFetchCache[filterName][pageIndex] && !toCache) {
++    const resJson = challengesFetchCache[filter.name][pageIndex];
++    const { newFilterChallengesStore, newFilter, totalReached } =
++      handleChallengesFetchResult({
++        resJson,
++        filter,
++        challenges,
++        pageIndex,
++        filterChallengesStore,
++      });
++    successCallback(newFilterChallengesStore, newFilter, totalReached);
++
++    if (totalReached) return;
++
++    fetchAdditionalChallenges({ filter, pageIndex: (pageIndex + 1), toCache: true });
++    return;
++  }
++
++  fetchPromise = fetchPromise.then(
++    fetch(filter.getApiUrl(pageIndex))
++      .then(res => res.json())
++      .then((resJson) => {
++        challengesFetchCache[filter.name] = challengesFetchCache[filter.name] || {};
++        challengesFetchCache[filter.name][pageIndex] = resJson;
++        if (toCache) return;
++
++        const { newFilterChallengesStore, newFilter, totalReached } =
++          handleChallengesFetchResult({
++            resJson,
++            filter,
++            challenges,
++            pageIndex,
++            filterChallengesStore,
++          });
++        successCallback(newFilterChallengesStore, newFilter, totalReached);
++
++        if (totalReached) return;
++
++        fetchAdditionalChallenges({ filter, pageIndex: (pageIndex + 1), toCache: true });
++      }),
++  );
++}
++
++export function getMaxWindowScrollY() {
++  return Math.max(
++    document.body.scrollHeight,
++    document.body.offsetHeight,
++    document.documentElement.clientHeight,
++    document.documentElement.scrollHeight,
++    document.documentElement.offsetHeight,
++  );
++}
+diff --git a/components/ChallengeCardContainer/SortingSelectBar/SortingSelectBar.jsx b/components/ChallengeCardContainer/SortingSelectBar/SortingSelectBar.jsx
+new file mode 100644
+index 0000000..e4f14a5
+--- /dev/null
++++ b/components/ChallengeCardContainer/SortingSelectBar/SortingSelectBar.jsx
+@@ -0,0 +1,84 @@
++import _ from 'lodash';
++import React, { Component } from 'react';
++import './SortingSelectBar.scss';
++
++const { string, arrayOf, func } = React.PropTypes;
++
++class SortingSelectBar extends Component {
++  constructor(props) {
++    super(props);
++
++    this.state = {
++      selectedSortingOption: props.value,
++      optionsVisible: false,
++    };
++  }
++
++  onViewOptions() {
++    this.setState({ optionsVisible: true });
++  }
++
++  onSelectOption(optionName) {
++    this.props.onSortingSelect(optionName);
++    this.setState({ selectedSortingOption: optionName });
++  }
++
++  render() {
++    const { filterName, sortingOptions } = this.props;
++    const { selectedSortingOption, optionsVisible } = this.state;
++    let options;
++
++    if (optionsVisible) {
++      options = (
++        <div className="view-options">
++          {
++            sortingOptions.map(optionName => (
++              <button
++                className="view-option"
++                key={`${filterName.replace(/\s+/g, '-').toLowerCase()}-${optionName}-sorting-bar`}
++                onClick={() => this.onSelectOption(optionName)}
++              >
++                {optionName}
++              </button>
++            ))
++          }
++        </div>
++      );
++    }
++
++    return (
++      <div className="sortingBar">
++        <h1 className="title">{filterName}</h1>
++        <div className="view-options-toggle-container">
++          <p className="view-options-toggle-container-label">
++            Sort by:
++          </p>
++          <button
++            className="view-options-toggle"
++            onClick={() => this.setState({ optionsVisible: !this.state.optionsVisible })}
++          >
++            {selectedSortingOption}
++            <div className="down-arrow" />
++          </button>
++        </div>
++        {options}
++      </div>
++    );
++  }
++}
++
++SortingSelectBar.defaultProps = {
++  onSortingSelect: _.noop,
++  value: '',
++  sortingOptions: [],
++  filterName: '',
++};
++
++SortingSelectBar.propTypes = {
++  filterName: string,
++  sortingOptions: arrayOf(string),
++  onSortingSelect: func,
++  value: string,
++};
++
++export default SortingSelectBar;
+diff --git a/components/ChallengeCardContainer/SortingSelectBar/SortingSelectBar.scss b/components/ChallengeCardContainer/SortingSelectBar/SortingSelectBar.scss
+new file mode 100644
+index 0000000..090679f
+--- /dev/null
++++ b/components/ChallengeCardContainer/SortingSelectBar/SortingSelectBar.scss
+@@ -0,0 +1,85 @@
++@import '../../../styles/tc-styles';
++@import 'topcoder/tc-includes';
++
++$view-options-toggle-right-margin: $base-unit * 2;
++$down-arrow-size: $base-unit * 2;
++
++%sorting-select-button {
++  line-height: 21px;
++  border-radius: 6px;
++  padding: 8px 24px;
++  background-color: #fff;
++  font-weight: 700;
++  text-transform: uppercase;
++}
++
++.sortingBar {
++  display: flex;
++  padding: $base-unit;
++  position: relative;
++
++  .title {
++    padding: $base-unit * 2;
++    margin: 0;
++    border: none;
++  }
++
++  .view-options-toggle-container, .view-options {
++    position: absolute;
++  }
++
++  .view-options-toggle-container {
++    right: $view-options-toggle-right-margin;
++    top: $base-unit;
++    display: flex;
++    align-items: center;
++  }
++
++  .view-options-toggle-container-label {
++    font-weight: 300;
++    margin-right: $base-unit * 2;
++  }
++
++  .view-options {
++    right: $view-options-toggle-right-margin;
++    top: $base-unit * 10;
++    z-index: 1;
++    background: white;
++    border-radius: $base-unit;
++    padding: $base-unit;
++    box-shadow: 1px 5px 15px $tc-gray-20;
++    display: flex;
++    flex-direction: column;
++  }
++
++  .view-option {
++    @extend %sorting-select-button;
++
++    font-weight: 300;
++    padding: $base-unit * 2;
++    outline: none;
++    border: 0;
++    color: $tc-black;
++    text-align: left;
++  }
++
++  .view-options-toggle {
++    @extend %sorting-select-button;
++
++    color: $tc-gray-50;
++    border: 1px solid $tc-gray-50;
++    font-size: 12px;
++    outline: none;
++    display: flex;
++    align-items: center;
++  }
++
++  .down-arrow {
++    width: 0;
++    height: 0;
++    border-left: $down-arrow-size solid transparent;
++    border-right: $down-arrow-size solid transparent;
++    border-top: $down-arrow-size solid $tc-gray-50;
++    margin-left: $base-unit;
++  }
++}
+diff --git a/components/ChallengeCardContainer/filters.js b/components/ChallengeCardContainer/filters.js
+new file mode 100644
+index 0000000..143daef
+--- /dev/null
++++ b/components/ChallengeCardContainer/filters.js
+@@ -0,0 +1,86 @@
++export default [
++  {
++    name: 'All Challenges',
++    allIncluded: true,
++    sortingOptions: ['Most recent'],
++  },
++  {
++    name: 'Open for registration',
++    check(item) {
++      return item.registrationOpen.startsWith('Yes');
++    },
++    sortingOptions: [
++      'Most recent',
++      'Time to register',
++      'Phase end time',
++      '# of registrants',
++      '# of submissions',
++      'Prize high to low',
++      'Title A-Z',
++    ],
++    info: {
++      phaseName: 'registration',
++    },
++    getApiUrl: pageIndex => `http://api.topcoder.com/v2/challenges/open?pageIndex=${pageIndex}&pageSize=50`,
++  },
++  {
++    name: 'My challenges',
++    check(item) {
++      return item.myChallenge;
++    },
++    sortingOptions: [
++      'Most recent',
++      'Time to submit',
++      '# of registrants',
++      '# of submissions',
++      'Prize high to low',
++      'Title A-Z',
++    ],
++    getApiUrl: pageIndex => `http://api.topcoder.com/v2/user/challenges?&pageIndex=${pageIndex}&pageSize=50`,
++  },
++  {
++    name: 'Ongoing challenges',
++    check(item) {
++      return !item.registrationOpen.startsWith('Yes') && item.status === 'Active';
++    },
++    sortingOptions: [
++      'Most recent',
++      'Current phase',
++      'Title A-Z',
++      'Prize high to low',
++    ],
++    getApiUrl: pageIndex => `http://api.topcoder.com/v2/challenges/active?pageIndex=${pageIndex}&pageSize=50`,
++  },
++  {
++    name: 'Past challenges',
++    check(item) {
++      return item.status === 'Completed';
++    },
++    sortingOptions: [
++      'Most recent',
++      'Title A-Z',
++      'Prize high to low',
++    ],
++    getApiUrl: pageIndex => `http://api.topcoder.com/v2/challenges/past?pageIndex=${pageIndex}&pageSize=50`,
++  },
++  {
++    name: 'Open for review',
++    check(item) {
++      return item.currentPhaseName === 'Review';
++    },
++    sortingOptions: [
++      'Most recent',
++      '# of registrants',
++      '# of submissions',
++      'Prize high to low',
++      'Title A-Z',
++    ],
++    getApiUrl: (pageIndex) => {
++      const yesterday = new Date();
++      yesterday.setDate(yesterday.getDate() - 1);
++      const yesterdayFormatted = yesterday.toJSON().slice(0, 10);
++
++      return `http://api.topcoder.com/v2/challenges/open?pageIndex=${pageIndex}&pageSize=50&submissionEndTo=${yesterdayFormatted}`;
++    },
++  },
++];
+diff --git a/components/ChallengeCardContainer/sortingFunctionStore.js b/components/ChallengeCardContainer/sortingFunctionStore.js
+new file mode 100644
+index 0000000..14e271d
+--- /dev/null
++++ b/components/ChallengeCardContainer/sortingFunctionStore.js
+@@ -0,0 +1,13 @@
++const getTimeStamp = dateTime => new Date(dateTime).getTime();
++
++export default {
++  'Most recent': item => item.challengeId,
++  'Time to register': item => getTimeStamp(item.registrationEndDate),
++  'Time to submit': item => item.submissionEndTimestamp,
++  'Phase end time': item => item.currentPhaseRemainingTime,
++  '# of registrants': item => -item.numRegistrants,
++  '# of submissions': item => -item.numSubmissions,
++  'Prize high to low': item => -item.totalPrize,
++  'Title A-Z': item => item.challengeName,
++  'Current phase': item => item.status,
++};
+diff --git a/components/ChallengeFilters/ChallengeFiltersExample.jsx b/components/ChallengeFilters/ChallengeFiltersExample.jsx
+index 57bf73d..42618c1 100644
+--- a/components/ChallengeFilters/ChallengeFiltersExample.jsx
++++ b/components/ChallengeFilters/ChallengeFiltersExample.jsx
+@@ -22,6 +22,7 @@ import SideBarFilter, { MODE as SideBarFilterModes } from '../SideBarFilters/Sid
+ import SideBarFilters from '../SideBarFilters';
+ import './ChallengeFiltersExample.scss';
+ import ChallengeCard from '../ChallengeCard/ChallengeCard';
++import ChallengeCardContainer from '../ChallengeCardContainer/ChallengeCardContainer';
+ import SRMCard from '../SRMCard/SRMCard';
+ import ChallengesSidebar from '../ChallengesSidebar/ChallengesSidebar';
+ import '../ChallengeCard/ChallengeCard.scss';
+@@ -262,15 +263,6 @@ class ChallengeFiltersExample extends React.Component {
+ 
+   // ReactJS render method.
+   render() {
+-    const cardify = challenge => (
+-      <ChallengeCard
+-        challenge={challenge}
+-        onTechTagClicked={(tag) => {
+-          if (this.challengeFilters) this.challengeFilters.setKeywords(tag);
+-        }}
+-        key={challenge.challengeId}
+-      />
+-    );
+     // TODO: This is bad code. Generation of myChallengesId array is O(N),
+     // using it to mark `My Challenges` using that array is O(N^2). Not that
+     // critical for now, as nobody has huge amount of challenges he is participating,
+@@ -293,8 +285,39 @@ class ChallengeFiltersExample extends React.Component {
+       return item;
+     });
+ 
+-    const filterChallenges = challenges.filter(
+-      this.state.sidebarFilter.getFilterFunction()).map(cardify);
++    const { sidebarFilter } = this.state
++    const { mode: sidebarFilterMode, name: sidebarFilterName } = sidebarFilter
++
++    let challengeCardContainer
++    if (sidebarFilterMode === 'custom') {
++      const cardify = challenge => (
++        <ChallengeCard
++          challenge={challenge}
++          onTechTagClicked={(tag) => {
++            if (this.challengeFilters) this.challengeFilters.setKeywords(tag);
++          }}
++          key={challenge.challengeId}
++        />
++      )
++
++      challengeCardContainer = (
++        <div className="challenge-cards-container">
++          <div className="ChallengeCardExamples example-lg">
++            {challenges.filter(sidebarFilter.getFilterFunction()).map(cardify)}
++          </div>
++        </div>
++      )
++    } else {
++      challengeCardContainer = (
++        <ChallengeCardContainer
++          onTechTagClicked={(tag) => this.challengeFilters.setKeywords(tag)}
++          challenges={challenges}
++          currentFilterName={sidebarFilterName}
++          expanded={sidebarFilterMode !== 'All Challenges'}
++          additionalFilter={sidebarFilter.getFilterFunction()}
++        />
++      )
++    }
+ 
+     return (
+       <div className="ChallengeFiltersExample">
+@@ -340,11 +363,7 @@ class ChallengeFiltersExample extends React.Component {
+         </div>
+ 
+         <div className={`tc-content-wrapper ${this.state.currentCardType === 'Challenges' ? '' : 'hidden'}`}>
+-          <div className="challenge-cards-container">
+-            <div className="ChallengeCardExamples example-lg">
+-              {filterChallenges}
+-            </div>
+-          </div>
++          {challengeCardContainer}
+ 
+           <Sticky
+             className="sidebar-container"
+diff --git a/components/SideBarFilters/SideBarFilter.js b/components/SideBarFilters/SideBarFilter.js
+index 5cc8162..602de0f 100644
+--- a/components/SideBarFilters/SideBarFilter.js
++++ b/components/SideBarFilters/SideBarFilter.js
+@@ -15,6 +15,7 @@ export const MODE = {
+   OPEN_FOR_REGISTRATION: 'Open for registration',
+   ONGOING_CHALLENGES: 'Ongoing challenges',
+   PAST_CHALLENGES: 'Past challenges',
++  OPEN_FOR_REVIEW: 'Open for review',
+   CUSTOM: 'custom',
+ };
+ 
+@@ -61,6 +62,7 @@ class SideBarFilter extends ChallengeFilter {
+       case MODE.ALL_CHALLENGES: return () => true;
+       case MODE.MY_CHALLENGES: return item => item.myChallenge;
+       case MODE.OPEN_FOR_REGISTRATION: return item => item.registrationOpen.startsWith('Yes');
++      case MODE.OPEN_FOR_REVIEW: return item => item.currentPhaseName === 'Review';
+       case MODE.ONGOING_CHALLENGES:
+         return item => !item.registrationOpen.startsWith('Yes')
+           && item.status === 'Active';
+diff --git a/components/SideBarFilters/SideBarFilters.jsx b/components/SideBarFilters/SideBarFilters.jsx
+index eaa9e77..fa5bb46 100644
+--- a/components/SideBarFilters/SideBarFilters.jsx
++++ b/components/SideBarFilters/SideBarFilters.jsx
+@@ -39,6 +39,7 @@ const DEFAULT_FILTERS = [
+   new SideBarFilter(MODE.OPEN_FOR_REGISTRATION),
+   new SideBarFilter(MODE.ONGOING_CHALLENGES),
+   new SideBarFilter(MODE.PAST_CHALLENGES),
++  new SideBarFilter(MODE.OPEN_FOR_REVIEW),
+ ];
+ 
+ /*
+@@ -50,7 +51,8 @@ const FILTER_ID = {
+   OPEN_FOR_REGISTRATION: 2,
+   ONGOING_CHALLENGES: 3,
+   PAST_CHALLENGES: 4,
+-  FIRST_USER_DEFINED: 5,
++  OPEN_FOR_REVIEW: 5,
++  FIRST_USER_DEFINED: 6,
+ };
+ 
+ /*
+@@ -252,6 +254,7 @@ class SideBarFilters extends React.Component {
+         {filters[FILTER_ID.OPEN_FOR_REGISTRATION]}
+         {filters[FILTER_ID.ONGOING_CHALLENGES]}
+         {filters[FILTER_ID.PAST_CHALLENGES]}
++        {filters[FILTER_ID.OPEN_FOR_REVIEW]}
+         {
+           myFilters.length ?
+             <span>
+diff --git a/package.json b/package.json
+index cc0e178..538fbde 100644
+--- a/package.json
++++ b/package.json
+@@ -23,8 +23,8 @@
+     "example": "webpack-dev-server -d --progress --inline --colors",
+     "dev": "webpack-dev-server -d --progress --inline --colors --dev --tc",
+     "clean": "rm -r dist",
+-    "build": "webpack --config webpack.config.js; cp example/index.html dist/",
+-    "lint": "eslint --format table --ext .js,.jsx .",
++    "build": "webpack --config webpack.config.js; cp index.html dist/",
++    "lint": "eslint ./components/ChallengeCardContainer",
+     "test": "cross-env NODE_ENV=test mocha --reporter progress --compilers js:babel-core/register --require ignore-styles --recursive \"./components/**/*.spec.js\"",
+     "test:watch": "npm run test -- --watch",
+     "build-navbar": "webpack $BUILD --tc --config navbar.webpack.config.coffee;"
+@@ -49,6 +49,7 @@
+     "react-select": "^1.0.0-rc.3",
+     "react-stickynode": "^1.2.1",
+     "react-svg-loader": "^1.1.1",
+-    "uuid": "^3.0.1"
++    "uuid": "^3.0.1",
++    "react-visibility-sensor": "^3.7.0"
+   }
+ }
