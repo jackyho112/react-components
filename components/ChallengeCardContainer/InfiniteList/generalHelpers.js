@@ -1,5 +1,5 @@
 /* global
-  Promise
+  Promise, clearTimeout
 */
 
 import _ from 'lodash';
@@ -7,6 +7,7 @@ import _ from 'lodash';
 const fetchPromise = Promise.resolve();
 const loadBatchSize = 1;
 const timeInterval = 1000 * (loadBatchSize / 100);
+let lastItemReturnTimeout;
 export function fetchAdditionalItems({
   items,
   itemUniqueIdentifier,
@@ -22,11 +23,11 @@ export function fetchAdditionalItems({
 
       function returnReceivedItems(currentLoadedItemIndex = 0) {
         if (currentLoadedItemIndex >= uniqueReceivedItems.length) {
-          setTimeout(() => finishCallback(), timeInterval);
+          setTimeout(() => finishCallback(receivedItems), timeInterval);
           return;
         }
 
-        setTimeout(() => {
+        lastItemReturnTimeout = setTimeout(() => {
           successCallback(receivedItems.slice(
             currentLoadedItemIndex,
             currentLoadedItemIndex + loadBatchSize,
@@ -41,17 +42,8 @@ export function fetchAdditionalItems({
   );
 }
 
-export function hasFilterChanged(collection, filterA, filterB) {
-  const [filteredCollectionA, filteredCollectionB] = [filterA, filterB]
-    .map(filter => _.filter(collection, filter));
-
-  return filteredCollectionA.length !== filteredCollectionB.length;
-}
-
-export function hasSortingChanged(collection, uniqueIdentifier, sortA, sortB) {
-  const [sortedStringA, sortedStringB] = [sortA, sortB].map(sort => _.map(_.sortBy(collection, sort), uniqueIdentifier).join(''));
-
-  return sortedStringA !== sortedStringB;
+export function stopItemReturnChain() {
+  clearTimeout(lastItemReturnTimeout);
 }
 
 export function addNewIds(numberToAdd, prefix, currentIndex) {

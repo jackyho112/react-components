@@ -1,5 +1,5 @@
 /* global
-  sessionStorage, window
+  sessionStorage, window, Math
 */
 
 /**
@@ -158,9 +158,11 @@ class ChallengeCardContainer extends Component {
                     tag => this.props.onTechTagClicked(tag)
                   )}
                   renderItemTemplate={getChallengeCardPlaceholder}
-                  fetchItems={
-                    getFetchChallengesFunc(filter.getApiUrl, initialPageIndex, fetchCallback)
-                  }
+                  fetchItems={getFetchChallengesFunc(
+                    filter.getApiUrl,
+                    Math.floor(challenges.length/batchLoadNumber)
+                  )}
+                  fetchItemFinishCallback={fetchCallback}
                   batchNumber={batchLoadNumber}
                   filter={additionalFilter}
                   sort={sortingFunctionStore[filterSortingStore[filterName]]}

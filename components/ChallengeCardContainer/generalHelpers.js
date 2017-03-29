@@ -38,18 +38,14 @@ function formatChallenge(challenge) {
   return formattedChallenge;
 }
 
-export function getFetchChallengesFunc(getUrl, initialPageIndex, fetchCallback) {
-  let pageIndex = initialPageIndex;
+export function getFetchChallengesFunc(getUrl, initialPageIndex) {
+  let pageIndex = initialPageIndex || 1;
 
   return () => {
     pageIndex += 1;
 
     return fetch(getUrl(pageIndex))
       .then(response => response.json())
-      .then((responseJson) => {
-        const formattedChallenge = responseJson.data.map(formatChallenge);
-        fetchCallback(formattedChallenge);
-        return formattedChallenge;
-      });
+      .then(responseJson => responseJson.data.map(formatChallenge));
   };
 }

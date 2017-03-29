@@ -1,3 +1,7 @@
+/* global
+  Math, window
+*/
+
 import _ from 'lodash';
 import React, { Component } from 'react';
 import Waypoint from 'react-waypoint';
@@ -7,9 +11,11 @@ import {
   hasFilterChanged,
   hasSortingChanged,
   addNewIds,
+  stopItemReturnChain,
 } from './generalHelpers'
 
 const assignedIdKey = 'assignedId'
+const loadpointBottomOffset = -200
 const { arrayOf, object, func, string, bool, number, oneOfType } = React.PropTypes
 
 class InfiniteList extends Component {
@@ -25,16 +31,20 @@ class InfiniteList extends Component {
   componentWillReceiveProps(nextProps) {
     const { filter: oldFilter, sort: oldSort, uniqueIdentifier } = this.props
     const { items, itemCountTotal, batchNumber, filter, sort } = nextProps
-    const { items: previousItems } = this
+    const [ newlyOrganizedItems, oldOrganizedItems ] = [
+      [filter, sort], [oldFilter, oldSort]
+    ].map((organizers) => _.sortBy(_.filter(this.items, organizers[0]), organizers[1]))
+    const [ newItemOrderRepresentation, oldItemOrderRepresentation  ] = [
+      newlyOrganizedItems, oldOrganizedItems
+    ].map((items) => _.map(items, uniqueIdentifier).join(''))
 
     if (itemCountTotal !== this.props.itemCountTotal) {
+      stopItemReturnChain()
       this.initializeProperties(items.length)
       this.addNewItems(items, nextProps)
-    } else if (
-      hasFilterChanged(items, oldFilter, filter)
-      || hasSortingChanged(items, uniqueIdentifier, oldSort, sort)
-    ) {
-      this.reCacheItemElements(sort, filter, nextProps.renderItem)
+      this.setLoadingStatus(false)
+    } else if (newItemOrderRepresentation !== oldItemOrderRepresentation) {
+      this.reCacheItemElements(newlyOrganizedItems, nextProps.renderItem)
     } else {
       return
     }
@@ -47,9 +57,8 @@ class InfiniteList extends Component {
     this.addBatchIds(passedInItemCount)
   }
 
-  reCacheItemElements(sort, filter, renderItem) {
-    this.cachedItemElements = _
-      .sortBy(_.filter(this.items, filter), sort)
+  reCacheItemElements(organizedItems, renderItem) {
+    this.cachedItemElements = organizedItems
       .map(item => renderItem(item[assignedIdKey], item))
 
     this.forceUpdate()
@@ -63,7 +72,10 @@ class InfiniteList extends Component {
     const stampedNewItems = newItems.map((item, index) => {
       const idIndex = existingItemCount + index
 
-      return _.assign({}, _.set(item, assignedIdKey, ids[idIndex], `${idPrefix}-${idIndex}`))
+      return _.assign(
+        {},
+        _.set(item, assignedIdKey, ids[idIndex] || `${idPrefix}-${idIndex}`)
+      )
     })
 
     const newElements = _
@@ -103,7 +115,10 @@ class InfiniteList extends Component {
       items: passedInItems,
       fetchItems,
       uniqueIdentifier,
-      finishCallback: () => this.setLoadingStatus(false),
+      finishCallback: (newItems) => {
+        this.props.fetchItemFinishCallback(newItems)
+        this.setLoadingStatus(false)
+      },
       successCallback: (newItems) => {
         const newItemCountTotal = this.items.length + newItems.length
 
@@ -134,7 +149,7 @@ class InfiniteList extends Component {
         <Waypoint
           onEnter={() => this.onScrollToLoadPoint()}
           scrollableAncestor={window}
-          bottomOffset={-200}
+          bottomOffset={loadpointBottomOffset}
           key={Math.random()}
         />
       </div>
@@ -152,6 +167,7 @@ InfiniteList.defaultProps = {
   filter: () => true,
   sort: () => true,
   uniqueIdentifier: false,
+  fetchItemFinishCallback: _.noop,
 }
 
 InfiniteList.propTypes = {
@@ -164,6 +180,7 @@ InfiniteList.propTypes = {
   filter: func,
   sort: func,
   uniqueIdentifier: oneOfType([string, bool]),
+  fetchItemFinishCallback: func,
 }
 
 export default InfiniteList
