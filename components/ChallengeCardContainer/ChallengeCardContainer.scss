@@ -3,6 +3,7 @@
 
 .challengeCardContainer {
   border-radius: $base-unit;
+  min-width: $base-unit * 180;
 
   .category-challenges-container {
     background: $tc-gray-neutral-light;
@@ -29,7 +30,7 @@
     color: $tc-white;
     width: 100%;
     text-align: center;
-    padding-top: 5px;
+    padding-top: $base-unit;
     margin: 0;
   }
 }

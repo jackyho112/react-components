@@ -69,7 +69,8 @@ class SideBarFilter extends ChallengeFilter {
         && !item.status.startsWith('Completed')
         && item.registrationOpen.startsWith('Yes');
       case MODE.ONGOING_CHALLENGES:
-        return item => !item.registrationOpen.startsWith('Yes')
+        return item => item.registrationOpen
+          && !item.registrationOpen.startsWith('Yes')
           && item.status === 'Active';
       case MODE.PAST_CHALLENGES: return item => item.status === 'Completed';
       default: return super.getFilterFunction();

@@ -330,8 +330,12 @@ class ChallengeFiltersExample extends React.Component {
         return challenge.id;
       });
     }
-    let challenges = this.state.challenges.filter(this.state.filter.getFilterFunction());
-    challenges = challenges.map((item) => {
+
+    const { sidebarFilter } = this.state
+    const sidebarFilterFunc = sidebarFilter.getFilterFunction()
+    const baseFilterFunc = this.state.filter.getFilterFunction()
+    let { challenges } = this.state
+    const unfilteredChallenges = challenges = challenges.map((item) => {
       // check the challenge id exist in my challenges id
       // TODO: This is also should be moved to a better place, fetchChallenges() ?
       if (_.indexOf(myChallengesId, item.challengeId) > -1) {
@@ -340,7 +344,8 @@ class ChallengeFiltersExample extends React.Component {
       return item;
     });
 
-    const { sidebarFilter } = this.state
+    challenges = challenges.filter(baseFilterFunc);
+
     const { mode: sidebarFilterMode, name: sidebarFilterName } = sidebarFilter
 
     let challengeCardContainer
@@ -358,7 +363,7 @@ class ChallengeFiltersExample extends React.Component {
       challengeCardContainer = (
         <div className="challenge-cards-container">
           <div className="ChallengeCardExamples example-lg">
-            {challenges.filter(sidebarFilter.getFilterFunction()).map(cardify)}
+            {challenges.filter(sidebarFilterFunc).map(cardify)}
           </div>
         </div>
       )
@@ -366,10 +371,17 @@ class ChallengeFiltersExample extends React.Component {
       challengeCardContainer = (
         <ChallengeCardContainer
           onTechTagClicked={(tag) => this.challengeFilters.setKeywords(tag)}
-          challenges={challenges}
+          challenges={unfilteredChallenges}
           currentFilterName={sidebarFilterName}
           expanded={sidebarFilterMode !== 'All Challenges'}
-          additionalFilter={sidebarFilter.getFilterFunction()}
+          fetchCallback={(fetchedChallenges) => {
+            this.setState({
+              challenges: challenges.concat(_.filter(fetchedChallenges, baseFilterFunc)) 
+            })
+          }}
+          additionalFilter={
+            (challenge) => sidebarFilterFunc(challenge) && baseFilterFunc(challenge)
+          }
         />
       )
     }

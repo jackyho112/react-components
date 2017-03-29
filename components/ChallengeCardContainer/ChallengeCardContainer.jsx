@@ -21,22 +21,32 @@
 
 import _ from 'lodash';
 import React, { Component } from 'react';
-import Waypoint from 'react-waypoint';
-import ChallengeCard from '../ChallengeCard/ChallengeCard';
 import SortingSelectBar from './SortingSelectBar/SortingSelectBar';
-import defaultFilters from './filters';
+import InfiniteList from './InfiniteList/InfiniteList';
+import defaultFilters from './challengeFilters';
 import defaultSortingFunctionStore from './sortingFunctionStore';
 import {
+  getChallengeCardPlaceholder,
+  getChallengeCard,
+  getExpandBucketButton,
+} from './childComponentConstructorHelpers'
+import {
   getFilterChallengesStore,
-  findFilterByName,
   getFilterSortingStore,
-  fetchAdditionalChallenges,
+  getFilterTotalCountStore,
+} from './storeConstructorHelpers'
+import {
+  findFilterByName,
   filterFilterChallengesStore,
-  getMaxWindowScrollY,
-} from './ChallengeCardContainerHelpers';
+  getFetchChallengesFunc,
+} from './generalHelpers';
 import './ChallengeCardContainer.scss';
 
 const { arrayOf, object, shape, func, string, bool, oneOfType } = React.PropTypes;
+const initialNumberToShow = 10;
+const batchLoadNumber = 50;
+const initialPageIndex = 2;
+const challengeUniqueIdentifier = 'challengeId';
 
 class ChallengeCardContainer extends Component {
   constructor(props) {
@@ -53,8 +63,11 @@ class ChallengeCardContainer extends Component {
       currentFilter: findFilterByName(currentFilterName, filters),
       filterSortingStore: getFilterSortingStore(filters, userSessionFilterSortingStore),
       sortingFunctionStore: defaultSortingFunctionStore,
+      filterTotalCountStore: {},
       expanded,
     };
+
+    getFilterTotalCountStore().then((filterTotalCountStore) => this.setState({ filterTotalCountStore }))
   }
 
   componentWillReceiveProps(nextProps) {
@@ -76,42 +89,6 @@ class ChallengeCardContainer extends Component {
     }, this.props.onExpandFilterResult);
   }
 
-  onScrollChallenges() {
-    if (this.loading) return;
-    const { currentFilter } = this.state;
-    const { filterChallengesStore } = this.state;
-    const maximumScrollY = getMaxWindowScrollY();
-
-    if (!currentFilter || currentFilter.totalReached === true) return;
-
-    // put the fetch and update operation to the end of the queue to allow
-    // the scrolling to finish
-    setTimeout(() => {
-      const pageIndex = currentFilter.currentPageIndex || 1;
-      this.loading = true;
-
-      fetchAdditionalChallenges({
-        filterChallengesStore,
-        filter: currentFilter,
-        pageIndex: (pageIndex + 1),
-        challenges: filterChallengesStore[currentFilter.name],
-        successCallback: (newFilterChallengesStore, filter) => (
-          this.setState(
-            { filterChallengesStore: newFilterChallengesStore, currentFilter: filter },
-            () => {
-              // NOTE: have to scroll by the increase of max scroll due to expansion
-              // of the category container because the browser will attempt to
-              // scroll to the bottom and thereby trigger almost an infinite loop
-              // of challenge fetches. This should definitely be improved in the future.
-              window.scrollBy(0, maximumScrollY - getMaxWindowScrollY());
-              this.loading = false;
-            },
-          )
-        ),
-      });
-    });
-  }
-
   onSortingSelect(filterName, sortingOptionName) {
     const filterSortingStore = _.assign(
       {},
@@ -124,42 +101,28 @@ class ChallengeCardContainer extends Component {
   }
 
   render() {
-    const initialNumberToShow = 10;
-    const { additionalFilter, filters } = this.props;
-    const { currentFilter, expanded, filterSortingStore, sortingFunctionStore } = this.state;
+    const { additionalFilter, filters, fetchCallback } = this.props;
+    const {
+      currentFilter,
+      expanded,
+      filterSortingStore,
+      sortingFunctionStore,
+      filterTotalCountStore,
+    } = this.state;
+
     const filterChallengesStore = filterFilterChallengesStore(
       this.state.filterChallengesStore,
-      currentFilter,
-      additionalFilter,
+      currentFilter
     );
-    let needToFetchMore = false;
-
-    if (expanded) {
-      needToFetchMore =
-        this.state.filterChallengesStore[currentFilter.name].length >= initialNumberToShow * 5;
-    }
-
-    const loadingIndication = needToFetchMore && expanded && !currentFilter.totalReached
-      ? <h1 className="loading">Loading...</h1>
-      : null;
-
-    const loadingWaypoint = needToFetchMore && expanded && !currentFilter.totalReached
-      ? <Waypoint
-          onEnter={value => this.onScrollChallenges(value)}
-          scrollableAncestor={window}
-        />
-      : null;
 
     return (
       <div className="challengeCardContainer">
         {
           Object.keys(filterChallengesStore).map((filterName) => {
-            let expansionButtion;
-            let challenges = _.sortBy(
-              filterChallengesStore[filterName],
-              [sortingFunctionStore[filterSortingStore[filterName]]],
-            );
+            let expansionButtion
+            let challenges = filterChallengesStore[filterName]
 
+            const challengeCountTotal = filterTotalCountStore[filterName]
             const trimmedFilterName = filterName.replace(/\s+/g, '-').toLowerCase();
             const filter = findFilterByName(filterName, filters);
             const { sortingOptions } = filter;
@@ -167,13 +130,10 @@ class ChallengeCardContainer extends Component {
 
             if (!expanded && challengeNumber > initialNumberToShow) {
               challenges = challenges.slice(0, initialNumberToShow);
-              expansionButtion = (
-                <button
-                  onClick={() => this.onExpandFilterResult(filterName)}
-                  className="view-more"
-                >
-                  View {filterChallengesStore[filterName].length - 10} more challenges
-                </button>
+
+              expansionButtion = getExpandBucketButton(
+                filterChallengesStore[filterName].length - 10,
+                () => this.onExpandFilterResult(filterName)
               );
             }
 
@@ -186,22 +146,31 @@ class ChallengeCardContainer extends Component {
                   value={filterSortingStore[filterName]}
                   key={`${trimmedFilterName}-sorting-bar`}
                 />
-                {
-                  _.map(challenges, challenge => (
-                    <ChallengeCard
-                      challenge={challenge}
-                      onTechTagClicked={tag => this.props.onTechTagClicked(tag)}
-                      key={`${challenge.challengeId}-${trimmedFilterName}`}
-                    />
-                  ))
-                }
+                <InfiniteList
+                  items={challenges}
+                  itemCountTotal={
+                    expanded
+                    ? challengeCountTotal || challenges.length
+                    : challenges.length
+                  }
+                  renderItem={_.partialRight(
+                    getChallengeCard,
+                    tag => this.props.onTechTagClicked(tag)
+                  )}
+                  renderItemTemplate={getChallengeCardPlaceholder}
+                  fetchItems={
+                    getFetchChallengesFunc(filter.getApiUrl, initialPageIndex, fetchCallback)
+                  }
+                  batchNumber={batchLoadNumber}
+                  filter={additionalFilter}
+                  sort={sortingFunctionStore[filterSortingStore[filterName]]}
+                  uniqueIdentifier={challengeUniqueIdentifier}
+                />
                 {expansionButtion}
-                {loadingIndication}
               </div>
             );
           })
         }
-        {loadingWaypoint}
       </div>
     );
   }
@@ -217,6 +186,7 @@ ChallengeCardContainer.defaultProps = {
   currentFilterName: '',
   challenges: [],
   expanded: false,
+  fetchCallback: _.noop,
 };
 
 ChallengeCardContainer.propTypes = {
@@ -228,12 +198,13 @@ ChallengeCardContainer.propTypes = {
   filters: arrayOf(shape({
     check: func,
     name: string,
-    apiEndpoint: string,
-    sortings: arrayOf(string),
+    getApiUrl: func,
+    sortingOptions: arrayOf(string),
     allIncluded: bool,
     info: object,
   })),
   expanded: oneOfType([bool, string]),
+  fetchCallback: func,
 };
 
 export default ChallengeCardContainer;
