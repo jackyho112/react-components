@@ -3,20 +3,25 @@
 */
 
 /**
- *  This component is responsbile for displaying and handling the interaction
- *  of challenges contained in different categories.
+ *  This component is responsbile for displaying and handling the container
+ *  interaction of challenges with respect to their filter categories.
  *
- *  It will handle the expansion of each cateogry container to see more challenges
- *  than the initial number which is 10 as well as the further expansion of the container.
- *  if the user scrolls down to the last challenge in the state and there are
- *  more challenges, additional 50 challenges will be fetched.
+ *  It uses the InfiniteList component to display the challenges in a list. It
+ *  passes into InfiniteList all the necessary properties such as the selected
+ *  sorting and filtering settings for rendering the challenges in the right
+ *  order and format. Refer to that component for the list behavior.
  *
  *  It will also handle sorting in each cateogry container and store the setting
- *  in sessionStorage. It will load the setting if it exists at the begining.
+ *  in sessionStorage. It will load the setting if it exists at the begining. It
+ *  uses the SortingSelectBar component for letting the user select the sorting
+ *  option for each challenge category.
  *
- *  It loads from files, filters.js and sortingFunctionStore.js, to know the filter
- *  categories and their information as well as all the sorting options for each
- *  filter category.
+ *  It loads from files, challengeFilters.js and sortingFunctionStore.js. The first
+ *  file lets the component know all the challenge categories with their respective
+ *  filtering settings, sorting options, API endpoints and other information. The
+ *  second file lets the component know how to sort challenges for different sorting
+ *  settings. These files are kept in this folder for now but should be moved to
+ *  another place if it is more appropriate.
  */
 
 import _ from 'lodash';

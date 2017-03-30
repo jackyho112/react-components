@@ -2,6 +2,27 @@
   Math, window
 */
 
+/**
+ *  This component handles the display of an infinite list of items as well as
+ *  their sorting, filtering and any further loading.
+ *
+ *  It takes an initial list of items and once the user scrolls to the bottom of
+ *  the list. The component adds a batch of new item ids, loads a batch of templates
+ *  with those ids, fetch more items and then load these items into the DOM in
+ *  smaller batches to replace the templates with the ids.
+ *
+ *  The above-mentioned behavior will continue until the number of the cached
+ *  items is equal to or more than the total item count passed in as props
+ *  to the component. The total item count should be the total amount of items
+ *  available for retrieval from the database.
+ *
+ *  For performance purposes, this component does not keep any state. All the
+ *  state properties are kept at the component object level. And the component
+ *  will only re-render if forceUpdate is called. forceUpdate is called in three
+ *  methods, reCacheItemElements, setLoadingStatus and addNewItems. This is
+ *  similar to how Redux updates a component.
+ */
+
 import _ from 'lodash';
 import React, { Component } from 'react';
 import Waypoint from 'react-waypoint';
@@ -10,7 +31,7 @@ import {
   insertWithinEvery,
   hasFilterChanged,
   hasSortingChanged,
-  addNewIds,
+  generateIds,
   stopItemReturnChain,
 } from './generalHelpers'
 
@@ -34,7 +55,7 @@ class InfiniteList extends Component {
     const [ newlyOrganizedItems, oldOrganizedItems ] = [
       [filter, sort], [oldFilter, oldSort]
     ].map((organizers) => _.sortBy(_.filter(this.items, organizers[0]), organizers[1]))
-    const [ newItemOrderRepresentation, oldItemOrderRepresentation  ] = [
+    const [ newItemOrderRepresentation, oldItemOrderRepresentation ] = [
       newlyOrganizedItems, oldOrganizedItems
     ].map((items) => _.map(items, uniqueIdentifier).join(''))
 
@@ -99,7 +120,7 @@ class InfiniteList extends Component {
     const { ids = [], idPrefix, items: { length: itemCount } } = this
 
     this.idPrefix = idPrefix || Math.random().toString(36).substring(7)
-    this.ids = ids.concat(addNewIds(numberToAdd || batchNumber, idPrefix, itemCount))
+    this.ids = ids.concat(generateIds(numberToAdd || batchNumber, idPrefix, itemCount))
   }
 
   onScrollToLoadPoint() {

@@ -5,6 +5,8 @@
 import _ from 'lodash';
 import challengeFilters from './challengeFilters';
 
+// construct a store with filter/bucket name as key and its current
+// matched challenges as value
 export function getFilterChallengesStore(filters, challenges) {
   const nonAllInclusiveFilters = _.filter(filters, filter => (!filter.allIncluded));
   const filterChallengesStore = nonAllInclusiveFilters.reduce(
@@ -20,6 +22,8 @@ export function getFilterChallengesStore(filters, challenges) {
   ), filterChallengesStore);
 }
 
+// construct a store with filter/bucket name as key and its stored
+// sorting setting name as value
 export function getFilterSortingStore(filters, sortingSetting = {}) {
   return filters.reduce((filterSortingStore, filter) => (
     _.set(
@@ -30,6 +34,8 @@ export function getFilterSortingStore(filters, sortingSetting = {}) {
   ), {});
 }
 
+// construct a store with filter/bucket name as key and its total challenge
+// count as value if available
 export function getFilterTotalCountStore() {
   return Promise.all(
     challengeFilters.map((filter) => {

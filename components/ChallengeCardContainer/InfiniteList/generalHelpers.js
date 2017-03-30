@@ -8,6 +8,8 @@ const fetchPromise = Promise.resolve();
 const loadBatchSize = 1;
 const timeInterval = 1000 * (loadBatchSize / 100);
 let lastItemReturnTimeout;
+
+// fetch items and then return them in batches
 export function fetchAdditionalItems({
   items,
   itemUniqueIdentifier,
@@ -42,11 +44,12 @@ export function fetchAdditionalItems({
   );
 }
 
+// clear item batch return timeout and stop the chain
 export function stopItemReturnChain() {
   clearTimeout(lastItemReturnTimeout);
 }
 
-export function addNewIds(numberToAdd, prefix, currentIndex) {
+export function generateIds(numberToAdd, prefix, currentIndex) {
   return _.times(
     numberToAdd,
     num => `${prefix}-${currentIndex + num}`,

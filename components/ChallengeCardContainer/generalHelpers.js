@@ -4,6 +4,8 @@
 
 import _ from 'lodash';
 
+// filter out empty challenge buckets, and if currentFilter is passed in,
+// find the bucket with the filter name and only leave that bucket in
 export function filterFilterChallengesStore(filterChallengesStore, currentFilter) {
   const allFilters = [
     (store) => {
@@ -28,6 +30,9 @@ export function findFilterByName(filterName, filters) {
   return {};
 }
 
+// format a challenge gotten from the API endpoint
+// this is necessary for the challenge to be filtered and sorted in
+// other components
 function formatChallenge(challenge) {
   const formattedChallenge = _.assign({}, challenge);
 

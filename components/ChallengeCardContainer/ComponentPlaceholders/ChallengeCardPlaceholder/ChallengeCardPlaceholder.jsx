@@ -1,10 +1,15 @@
+/**
+ *  The component displays a challenge card without any data.
+ *  The empty data is replaced with grey background.
+ */
+
 import React from 'react'
 import '../../../ChallengeCard/ChallengeCard.scss'
 import './ChallengeCardPlaceholder.scss'
-import '../../ComponentPlaceholderGenerator/ComponentPlaceholder.scss'
+import '../ComponentPlaceholder.scss'
 
-const ChallengeCardPlaceholder = ({ height }) => (
-  <div className="challengeCard placeholder">
+const ChallengeCardPlaceholder = ({ id }) => (
+  <div className="challengeCard placeholder" key={id}>
     <div className="left-panel">
       <div className="challenge-track placeholder-template"></div>
 

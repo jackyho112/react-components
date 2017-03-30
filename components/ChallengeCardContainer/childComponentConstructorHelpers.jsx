@@ -1,13 +1,10 @@
 import React from 'react';
-import ComponentPlaceholderGenerator from './ComponentPlaceholderGenerator/ComponentPlaceholderGenerator';
+import ChallengeCardPlaceholder from './ComponentPlaceholders/ChallengeCardPlaceholder/ChallengeCardPlaceholder';
 import ChallengeCard from '../ChallengeCard/ChallengeCard';
 
 export function getChallengeCardPlaceholder(id) {
   return (
-    <ComponentPlaceholderGenerator
-      type="challenge-card"
-      key={id}
-    />
+    <ChallengeCardPlaceholder key={id} />
   );
 }
 
@@ -23,10 +20,7 @@ export function getChallengeCard(id, challenge, onTechTagClicked) {
 
 export function getExpandBucketButton(hiddenNumber, onClick) {
   return (
-    <button
-      onClick={onClick}
-      className="view-more"
-    >
+    <button onClick={onClick} className="view-more">
       View {hiddenNumber} more challenges
     </button>
   );
