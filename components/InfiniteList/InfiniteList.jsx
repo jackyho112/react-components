@@ -69,16 +69,17 @@ class InfiniteList extends Component {
   }
 
   // initialize properties/state of the component
-  // this.items should be unsorted and unfiltered
+  // this.items should be unfiltered
   initializeProperties(props, isMounting = false) {
-    const { items, batchNumber, filter, sort } = props;
+    const { items, batchNumber, sort } = props;
+    const sortedItems = organizeItems(items, () => true, sort)
 
     this.items = [];
     this.cachedItemElements = [];
     this.ids = [];
     this.addBatchIds(batchNumber);
-    this.addNewItems(items.slice(0, batchNumber), props, isMounting);
-    this.cachedPassedInItems = items.slice(batchNumber);
+    this.addNewItems(sortedItems.slice(0, batchNumber), props, isMounting);
+    this.cachedPassedInItems = sortedItems.slice(batchNumber);
   }
 
   reCacheItemElements(organizedItems, renderItem) {
