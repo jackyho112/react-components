@@ -43,14 +43,8 @@ function formatChallenge(challenge) {
   return formattedChallenge;
 }
 
-export function getFetchChallengesFunc(getUrl, initialPageIndex) {
-  let pageIndex = initialPageIndex || 1;
-
-  return () => {
-    pageIndex += 1;
-
-    return fetch(getUrl(pageIndex))
-      .then(response => response.json())
-      .then(responseJson => responseJson.data.map(formatChallenge));
-  };
+export function fetchChallenges(getUrl, pageIndex) {
+  return fetch(getUrl(pageIndex))
+    .then(response => response.json())
+    .then(responseJson => responseJson.data.map(formatChallenge));
 }

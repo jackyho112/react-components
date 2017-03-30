@@ -43,7 +43,7 @@ import {
 import {
   findFilterByName,
   filterFilterChallengesStore,
-  getFetchChallengesFunc,
+  fetchChallenges,
 } from './generalHelpers';
 import './ChallengeCardContainer.scss';
 
@@ -162,10 +162,7 @@ class ChallengeCardContainer extends Component {
                     tag => this.props.onTechTagClicked(tag)
                   )}
                   renderItemTemplate={getChallengeCardPlaceholder}
-                  fetchItems={getFetchChallengesFunc(
-                    filter.getApiUrl,
-                    Math.round(challenges.length/batchLoadNumber)
-                  )}
+                  fetchItems={_.partial(fetchChallenges, filter.getApiUrl)}
                   fetchItemFinishCallback={fetchCallback}
                   batchNumber={batchLoadNumber}
                   filter={additionalFilter}

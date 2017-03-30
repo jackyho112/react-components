@@ -34,7 +34,8 @@ import {
 } from './generalHelpers';
 
 const assignedIdKey = 'assignedId';
-const loadpointBottomOffset = -200;
+const loadpointBottomOffset = -150;
+const initialPageIndex = 1;
 const { arrayOf, object, func, string, bool, number, oneOfType } = React.PropTypes;
 
 class InfiniteList extends Component {
@@ -43,6 +44,8 @@ class InfiniteList extends Component {
     this.initializeProperties(props, true);
   }
 
+  // from the new props determine what have changed and blow away cache
+  // and reload items based on new props
   componentWillReceiveProps(nextProps) {
     const { filter: oldFilter, sort: oldSort, uniqueIdentifier } = this.props;
     const { items, itemCountTotal, batchNumber, filter, sort } = nextProps;
@@ -69,17 +72,20 @@ class InfiniteList extends Component {
   }
 
   // initialize properties/state of the component
-  // this.items should be unfiltered
+  // load an initial number of items and then cache the rest from
+  // the passed-in items
   initializeProperties(props, isMounting = false) {
     const { items, batchNumber, sort } = props;
     const sortedItems = organizeItems(items, () => true, sort)
+    const initialLoadNumber = batchNumber + (items.length % batchNumber)
 
+    this.currentPageIndex = initialPageIndex;
     this.items = [];
     this.cachedItemElements = [];
     this.ids = [];
-    this.addBatchIds(batchNumber);
-    this.addNewItems(sortedItems.slice(0, batchNumber), props, isMounting);
-    this.cachedPassedInItems = sortedItems.slice(batchNumber);
+    this.addBatchIds(initialLoadNumber);
+    this.addNewItems(sortedItems.slice(0, initialLoadNumber), props, isMounting);
+    this.cachedPassedInItems = sortedItems.slice(initialLoadNumber);
   }
 
   reCacheItemElements(organizedItems, renderItem) {
@@ -122,12 +128,13 @@ class InfiniteList extends Component {
     this.ids = ids.concat(generateIds(numberToAdd || batchNumber, idPrefix, ids.length));
   }
 
+  // fetch new items either from cache or API endpoint
   fetchNewItems() {
     const { fetchItems, batchNumber } = this.props;
-    const { cachedPassedInItems } = this;
+    const { cachedPassedInItems, items: { length: itemNumber } } = this;
 
     if (cachedPassedInItems.length === 0) {
-      return fetchItems();
+      return fetchItems(this.currentPageIndex + 1);
     } else {
       this.cachedPassedInItems = cachedPassedInItems.slice(batchNumber);
       return Promise.resolve(cachedPassedInItems.slice(0, batchNumber));
@@ -144,10 +151,11 @@ class InfiniteList extends Component {
 
     fetchAdditionalItems({
       itemUniqueIdentifier: uniqueIdentifier,
-      initialItems: items.slice(0, batchNumber),
+      currentItems: this.items,
       fetchItems: () => this.fetchNewItems(),
       finishCallback: (newItems) => {
         this.props.fetchItemFinishCallback(newItems);
+        this.currentPageIndex += 1;
         this.setLoadingStatus(false);
       },
       successCallback: newItems => this.addNewItems(newItems),
