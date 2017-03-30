@@ -72,7 +72,7 @@ class ChallengeCardContainer extends Component {
       expanded,
     };
 
-    getFilterTotalCountStore().then((filterTotalCountStore) => this.setState({ filterTotalCountStore }))
+    getFilterTotalCountStore().then((filterTotalCountStore) => this.setState({ filterTotalCountStore }));
   }
 
   componentWillReceiveProps(nextProps) {
@@ -124,10 +124,10 @@ class ChallengeCardContainer extends Component {
       <div className="challengeCardContainer">
         {
           Object.keys(filterChallengesStore).map((filterName) => {
-            let expansionButtion
-            let challenges = filterChallengesStore[filterName]
+            let expansionButtion;
+            let challenges = filterChallengesStore[filterName];
 
-            const challengeCountTotal = filterTotalCountStore[filterName]
+            const challengeCountTotal = filterTotalCountStore[filterName];
             const trimmedFilterName = filterName.replace(/\s+/g, '-').toLowerCase();
             const filter = findFilterByName(filterName, filters);
             const { sortingOptions } = filter;

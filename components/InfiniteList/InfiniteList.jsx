@@ -28,139 +28,140 @@ import React, { Component } from 'react';
 import Waypoint from 'react-waypoint';
 import {
   fetchAdditionalItems,
-  insertWithinEvery,
-  hasFilterChanged,
-  hasSortingChanged,
   generateIds,
-  stopItemReturnChain,
-} from './generalHelpers'
+  stopNewItemReturnChain,
+  organizeItems,
+} from './generalHelpers';
 
-const assignedIdKey = 'assignedId'
-const loadpointBottomOffset = -200
-const { arrayOf, object, func, string, bool, number, oneOfType } = React.PropTypes
+const assignedIdKey = 'assignedId';
+const loadpointBottomOffset = -200;
+const { arrayOf, object, func, string, bool, number, oneOfType } = React.PropTypes;
 
 class InfiniteList extends Component {
   constructor(props) {
-    super(props)
+    super(props);
 
-    const { items: passedInItems } = props
+    const { items: passedInItems } = props;
 
-    this.initializeProperties(passedInItems.length)
-    this.addNewItems(passedInItems, null, true)
+    this.initializeProperties(passedInItems.length);
+    this.addNewItems(passedInItems, null, true);
   }
 
   componentWillReceiveProps(nextProps) {
-    const { filter: oldFilter, sort: oldSort, uniqueIdentifier } = this.props
-    const { items, itemCountTotal, batchNumber, filter, sort } = nextProps
+    const { filter: oldFilter, sort: oldSort, uniqueIdentifier } = this.props;
+    const { items, itemCountTotal, batchNumber, filter, sort } = nextProps;
     const [ newlyOrganizedItems, oldOrganizedItems ] = [
       [filter, sort], [oldFilter, oldSort]
-    ].map((organizers) => _.sortBy(_.filter(this.items, organizers[0]), organizers[1]))
+    ].map((organizers) => organizeItems(this.items, organizers[0], organizers[1]));
     const [ newItemOrderRepresentation, oldItemOrderRepresentation ] = [
       newlyOrganizedItems, oldOrganizedItems
-    ].map((items) => _.map(items, uniqueIdentifier).join(''))
+    ].map((items) => _.map(items, uniqueIdentifier).join(''));
 
     if (itemCountTotal !== this.props.itemCountTotal) {
-      stopItemReturnChain()
-      this.initializeProperties(items.length)
-      this.addNewItems(items, nextProps)
-      this.setLoadingStatus(false)
+      stopNewItemReturnChain();
+      this.initializeProperties(items.length);
+      this.addNewItems(items, nextProps);
+      this.setLoadingStatus(false);
     } else if (newItemOrderRepresentation !== oldItemOrderRepresentation) {
-      this.reCacheItemElements(newlyOrganizedItems, nextProps.renderItem)
+      this.reCacheItemElements(newlyOrganizedItems, nextProps.renderItem);
     } else {
-      return
+      return;
     }
   }
 
+  componentWillUnmount() {
+    stopNewItemReturnChain();
+  }
+
   initializeProperties(passedInItemCount) {
-    this.items = []
-    this.cachedItemElements = []
-    this.ids = []
-    this.addBatchIds(passedInItemCount)
+    this.items = [];
+    this.cachedItemElements = [];
+    this.ids = [];
+    this.addBatchIds(passedInItemCount);
   }
 
   reCacheItemElements(organizedItems, renderItem) {
     this.cachedItemElements = organizedItems
-      .map(item => renderItem(item[assignedIdKey], item))
+      .map(item => renderItem(item[assignedIdKey], item));
 
-    this.forceUpdate()
+    this.forceUpdate();
   }
 
   addNewItems(newItems, nextProps = null, isInitialization = false) {
-    const { renderItem, sort, filter } = nextProps || this.props
-    const { items: existingItems, cachedItemElements, ids, idPrefix } = this
-    const { length: existingItemCount } = existingItems
+    const { renderItem, sort, filter } = nextProps || this.props;
+    const { items: existingItems, cachedItemElements, ids, idPrefix } = this;
+    const { length: existingItemCount } = existingItems;
 
     const stampedNewItems = newItems.map((item, index) => {
-      const idIndex = existingItemCount + index
+      const idIndex = existingItemCount + index;
 
       return _.assign(
         {},
         _.set(item, assignedIdKey, ids[idIndex] || `${idPrefix}-${idIndex}`)
-      )
-    })
+      );
+    });
 
-    const newElements = _
-      .sortBy(_.filter(stampedNewItems, filter), sort)
-      .map(item => renderItem(item[assignedIdKey], item))
+    const newElements = organizeItems(stampedNewItems, filter, sort)
+      .map(item => renderItem(item[assignedIdKey], item));
 
-    this.items = existingItems.concat(stampedNewItems)
-    this.cachedItemElements = cachedItemElements.concat(newElements)
-    if (!isInitialization) this.forceUpdate()
+    this.items = existingItems.concat(stampedNewItems);
+    this.cachedItemElements = cachedItemElements.concat(newElements);
+    if (!isInitialization) this.forceUpdate();
   }
 
   setLoadingStatus(status) {
     if (this.loading !== status) {
-      this.loading = status
-      this.forceUpdate()
+      this.loading = status;
+      this.forceUpdate();
     }
   }
 
   addBatchIds(numberToAdd) {
-    const { batchNumber } = this.props
-    const { ids = [], idPrefix, items: { length: itemCount } } = this
+    const { batchNumber } = this.props;
+    const { ids = [], idPrefix, items: { length: itemCount } } = this;
 
-    this.idPrefix = idPrefix || Math.random().toString(36).substring(7)
-    this.ids = ids.concat(generateIds(numberToAdd || batchNumber, idPrefix, itemCount))
+    this.idPrefix = idPrefix || Math.random().toString(36).substring(7);
+    this.ids = ids.concat(generateIds(numberToAdd || batchNumber, idPrefix, itemCount));
   }
 
   onScrollToLoadPoint() {
-    if (this.loading || this.items.length >= this.props.itemCountTotal) return
+    if (this.loading || this.items.length >= this.props.itemCountTotal) return;
 
-    this.addBatchIds()
+    this.addBatchIds();
 
-    const { items: passedInItems, fetchItems, uniqueIdentifier, itemCountTotal } = this.props
+    const { items: passedInItems, fetchItems, uniqueIdentifier, itemCountTotal } = this.props;
 
-    this.setLoadingStatus(true)
+    this.setLoadingStatus(true);
 
     fetchAdditionalItems({
       items: passedInItems,
       fetchItems,
       uniqueIdentifier,
       finishCallback: (newItems) => {
-        this.props.fetchItemFinishCallback(newItems)
-        this.setLoadingStatus(false)
+        this.props.fetchItemFinishCallback(newItems);
+        this.setLoadingStatus(false);
       },
       successCallback: (newItems) => {
-        const newItemCountTotal = this.items.length + newItems.length
+        const newItemCountTotal = this.items.length + newItems.length;
 
         if (newItemCountTotal <= itemCountTotal) {
-          this.addNewItems(newItems)
+          this.addNewItems(newItems);
         } else {
-          this.addNewItems(newItems.slice(0, newItemCountTotal - itemCountTotal - 1))
+          this.addNewItems(newItems.slice(0, newItemCountTotal - itemCountTotal - 1));
         }
       },
     })
   }
 
   render() {
-    const { ids, items, cachedItemElements, items: { length: loadedCount } } = this
-    const { renderItemTemplate, batchNumber } = this.props
-    let templates
+    const { ids, items, cachedItemElements, items: { length: loadedCount } } = this;
+    const { renderItemTemplate, batchNumber } = this.props;
+    let templates;
 
     if (this.loading) {
-      templates = _.slice(ids, loadedCount, loadedCount + batchNumber).map(id => renderItemTemplate(id))
+      templates = _.slice(ids, loadedCount, loadedCount + batchNumber).map(id => renderItemTemplate(id));
     } else {
-      templates = []
+      templates = [];
     }
 
     return (
@@ -204,4 +205,4 @@ InfiniteList.propTypes = {
   fetchItemFinishCallback: func,
 }
 
-export default InfiniteList
+export default InfiniteList;

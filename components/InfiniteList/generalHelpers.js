@@ -6,7 +6,6 @@ import _ from 'lodash';
 
 const fetchPromise = Promise.resolve();
 const loadBatchSize = 1;
-const timeInterval = 1000 * (loadBatchSize / 100);
 let lastItemReturnTimeout;
 
 // fetch items and then return them in batches
@@ -25,7 +24,7 @@ export function fetchAdditionalItems({
 
       function returnReceivedItems(currentLoadedItemIndex = 0) {
         if (currentLoadedItemIndex >= uniqueReceivedItems.length) {
-          setTimeout(() => finishCallback(receivedItems), timeInterval);
+          setTimeout(() => finishCallback(receivedItems));
           return;
         }
 
@@ -36,7 +35,7 @@ export function fetchAdditionalItems({
           ));
 
           returnReceivedItems(currentLoadedItemIndex + loadBatchSize);
-        }, timeInterval);
+        });
       }
 
       returnReceivedItems();
@@ -45,13 +44,14 @@ export function fetchAdditionalItems({
 }
 
 // clear item batch return timeout and stop the chain
-export function stopItemReturnChain() {
+export function stopNewItemReturnChain() {
   clearTimeout(lastItemReturnTimeout);
 }
 
 export function generateIds(numberToAdd, prefix, currentIndex) {
-  return _.times(
-    numberToAdd,
-    num => `${prefix}-${currentIndex + num}`,
-  );
+  return _.times(numberToAdd, num => `${prefix}-${currentIndex + num}`);
+}
+
+export function organizeItems(items, filter, sort) {
+  return _.sortBy(_.filter(items, filter), sort);
 }

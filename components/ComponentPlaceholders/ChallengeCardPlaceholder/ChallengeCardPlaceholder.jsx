@@ -3,10 +3,10 @@
  *  The empty data is replaced with grey background.
  */
 
-import React from 'react'
-import '../../ChallengeCard/ChallengeCard.scss'
-import './ChallengeCardPlaceholder.scss'
-import '../ComponentPlaceholder.scss'
+import React from 'react';
+import '../../ChallengeCard/ChallengeCard.scss';
+import './ChallengeCardPlaceholder.scss';
+import '../ComponentPlaceholder.scss';
 
 const ChallengeCardPlaceholder = ({ id }) => (
   <div className="challengeCard placeholder" key={id}>
@@ -33,4 +33,4 @@ const ChallengeCardPlaceholder = ({ id }) => (
   </div>
 )
 
-export default ChallengeCardPlaceholder
+export default ChallengeCardPlaceholder;
