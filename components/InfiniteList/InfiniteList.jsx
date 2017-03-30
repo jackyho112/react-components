@@ -11,7 +11,7 @@
  *  with those ids, fetch more items and then load these items into the DOM in
  *  smaller batches to replace the templates with the ids.
  *
- *  The above-mentioned behavior will continue until the number of the cached
+ *  The above-mentioned behaviour will continue until the number of the cached
  *  items is equal to or more than the total item count passed in as props
  *  to the component. The total item count should be the total amount of items
  *  available for retrieval from the database.

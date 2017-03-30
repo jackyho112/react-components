@@ -3,15 +3,15 @@
 */
 
 /**
- *  This component is responsbile for displaying and handling the container
+ *  This component is responsible for displaying and handling the container
  *  interaction of challenges with respect to their filter categories.
  *
  *  It uses the InfiniteList component to display the challenges in a list. It
  *  passes into InfiniteList all the necessary properties such as the selected
  *  sorting and filtering settings for rendering the challenges in the right
- *  order and format. Refer to that component for the list behavior.
+ *  order and format. Refer to that component for the list behaviour.
  *
- *  It will also handle sorting in each cateogry container and store the setting
+ *  It will also handle sorting in each category container and store the setting
  *  in sessionStorage. It will load the setting if it exists at the begining. It
  *  uses the SortingSelectBar component for letting the user select the sorting
  *  option for each challenge category.
