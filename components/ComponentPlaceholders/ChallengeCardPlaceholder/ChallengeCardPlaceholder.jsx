@@ -4,7 +4,7 @@
  */
 
 import React from 'react'
-import '../../../ChallengeCard/ChallengeCard.scss'
+import '../../ChallengeCard/ChallengeCard.scss'
 import './ChallengeCardPlaceholder.scss'
 import '../ComponentPlaceholder.scss'
 

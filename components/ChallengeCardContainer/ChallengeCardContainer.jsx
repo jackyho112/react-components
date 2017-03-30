@@ -26,8 +26,8 @@
 
 import _ from 'lodash';
 import React, { Component } from 'react';
-import SortingSelectBar from './SortingSelectBar/SortingSelectBar';
-import InfiniteList from './InfiniteList/InfiniteList';
+import SortingSelectBar from '../SortingSelectBar/SortingSelectBar';
+import InfiniteList from '../InfiniteList/InfiniteList';
 import defaultFilters from './challengeFilters';
 import defaultSortingFunctionStore from './sortingFunctionStore';
 import {

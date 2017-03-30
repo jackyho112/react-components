@@ -1,5 +1,5 @@
 import React from 'react';
-import ChallengeCardPlaceholder from './ComponentPlaceholders/ChallengeCardPlaceholder/ChallengeCardPlaceholder';
+import ChallengeCardPlaceholder from '../ComponentPlaceholders/ChallengeCardPlaceholder/ChallengeCardPlaceholder';
 import ChallengeCard from '../ChallengeCard/ChallengeCard';
 
 export function getChallengeCardPlaceholder(id) {
