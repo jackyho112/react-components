@@ -1,5 +1,5 @@
 /* global
-  Math, window
+  Math, window, Promise
 */
 
 /**
@@ -40,11 +40,7 @@ const { arrayOf, object, func, string, bool, number, oneOfType } = React.PropTyp
 class InfiniteList extends Component {
   constructor(props) {
     super(props);
-
-    const { items: passedInItems } = props;
-
-    this.initializeProperties(passedInItems.length);
-    this.addNewItems(passedInItems, null, true);
+    this.initializeProperties(props, true);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -59,8 +55,7 @@ class InfiniteList extends Component {
 
     if (itemCountTotal !== this.props.itemCountTotal) {
       stopNewItemReturnChain();
-      this.initializeProperties(items.length);
-      this.addNewItems(items, nextProps);
+      this.initializeProperties(nextProps);
       this.setLoadingStatus(false);
     } else if (newItemOrderRepresentation !== oldItemOrderRepresentation) {
       this.reCacheItemElements(newlyOrganizedItems, nextProps.renderItem);
@@ -73,11 +68,17 @@ class InfiniteList extends Component {
     stopNewItemReturnChain();
   }
 
-  initializeProperties(passedInItemCount) {
+  // initialize properties/state of the component
+  // this.items should be unsorted and unfiltered
+  initializeProperties(props, isMounting = false) {
+    const { items, batchNumber, filter, sort } = props;
+
     this.items = [];
     this.cachedItemElements = [];
     this.ids = [];
-    this.addBatchIds(passedInItemCount);
+    this.addBatchIds(batchNumber);
+    this.addNewItems(items.slice(0, batchNumber), props, isMounting);
+    this.cachedPassedInItems = items.slice(batchNumber);
   }
 
   reCacheItemElements(organizedItems, renderItem) {
@@ -94,11 +95,7 @@ class InfiniteList extends Component {
 
     const stampedNewItems = newItems.map((item, index) => {
       const idIndex = existingItemCount + index;
-
-      return _.assign(
-        {},
-        _.set(item, assignedIdKey, ids[idIndex] || `${idPrefix}-${idIndex}`)
-      );
+      return _.set(item, assignedIdKey, ids[idIndex] || `${idPrefix}-${idIndex}`);
     });
 
     const newElements = organizeItems(stampedNewItems, filter, sort)
@@ -118,10 +115,22 @@ class InfiniteList extends Component {
 
   addBatchIds(numberToAdd) {
     const { batchNumber } = this.props;
-    const { ids = [], idPrefix, items: { length: itemCount } } = this;
+    const { ids = [], idPrefix } = this;
 
     this.idPrefix = idPrefix || Math.random().toString(36).substring(7);
-    this.ids = ids.concat(generateIds(numberToAdd || batchNumber, idPrefix, itemCount));
+    this.ids = ids.concat(generateIds(numberToAdd || batchNumber, idPrefix, ids.length));
+  }
+
+  fetchNewItems() {
+    const { fetchItems, batchNumber } = this.props;
+    const { cachedPassedInItems } = this;
+
+    if (cachedPassedInItems.length === 0) {
+      return fetchItems();
+    } else {
+      this.cachedPassedInItems = cachedPassedInItems.slice(batchNumber);
+      return Promise.resolve(cachedPassedInItems.slice(0, batchNumber));
+    }
   }
 
   onScrollToLoadPoint() {
@@ -129,27 +138,18 @@ class InfiniteList extends Component {
 
     this.addBatchIds();
 
-    const { items: passedInItems, fetchItems, uniqueIdentifier, itemCountTotal } = this.props;
-
+    const { items, uniqueIdentifier, itemCountTotal, batchNumber } = this.props;
     this.setLoadingStatus(true);
 
     fetchAdditionalItems({
-      items: passedInItems,
-      fetchItems,
-      uniqueIdentifier,
+      itemUniqueIdentifier: uniqueIdentifier,
+      initialItems: items.slice(0, batchNumber),
+      fetchItems: () => this.fetchNewItems(),
       finishCallback: (newItems) => {
         this.props.fetchItemFinishCallback(newItems);
         this.setLoadingStatus(false);
       },
-      successCallback: (newItems) => {
-        const newItemCountTotal = this.items.length + newItems.length;
-
-        if (newItemCountTotal <= itemCountTotal) {
-          this.addNewItems(newItems);
-        } else {
-          this.addNewItems(newItems.slice(0, newItemCountTotal - itemCountTotal - 1));
-        }
-      },
+      successCallback: newItems => this.addNewItems(newItems),
     })
   }
 

@@ -50,7 +50,6 @@ import './ChallengeCardContainer.scss';
 const { arrayOf, object, shape, func, string, bool, oneOfType } = React.PropTypes;
 const initialNumberToShow = 10;
 const batchLoadNumber = 50;
-const initialPageIndex = 2;
 const challengeUniqueIdentifier = 'challengeId';
 
 class ChallengeCardContainer extends Component {
@@ -165,7 +164,7 @@ class ChallengeCardContainer extends Component {
                   renderItemTemplate={getChallengeCardPlaceholder}
                   fetchItems={getFetchChallengesFunc(
                     filter.getApiUrl,
-                    Math.floor(challenges.length/batchLoadNumber)
+                    Math.round(challenges.length/batchLoadNumber)
                   )}
                   fetchItemFinishCallback={fetchCallback}
                   batchNumber={batchLoadNumber}

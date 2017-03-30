@@ -10,7 +10,7 @@ let lastItemReturnTimeout;
 
 // fetch items and then return them in batches
 export function fetchAdditionalItems({
-  items,
+  initialItems,
   itemUniqueIdentifier,
   fetchItems,
   successCallback,
@@ -18,9 +18,9 @@ export function fetchAdditionalItems({
 }) {
   fetchPromise.then(
     fetchItems().then((receivedItems) => {
-      let newItems = _.concat([], items, receivedItems);
+      let newItems = _.concat([], initialItems, receivedItems);
       if (itemUniqueIdentifier) newItems = _.uniqBy(newItems, itemUniqueIdentifier);
-      const uniqueReceivedItems = _.slice(newItems, items.length - 1);
+      const uniqueReceivedItems = _.slice(newItems, initialItems.length - 1);
 
       function returnReceivedItems(currentLoadedItemIndex = 0) {
         if (currentLoadedItemIndex >= uniqueReceivedItems.length) {

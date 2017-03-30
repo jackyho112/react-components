@@ -376,7 +376,10 @@ class ChallengeFiltersExample extends React.Component {
           expanded={sidebarFilterMode !== 'All Challenges'}
           fetchCallback={(fetchedChallenges) => {
             this.setState({
-              challenges: challenges.concat(_.filter(fetchedChallenges, baseFilterFunc)) 
+              challenges: _.uniqBy(
+                unfilteredChallenges.concat(fetchedChallenges),
+                'challengeId'
+              )
             })
           }}
           additionalFilter={
