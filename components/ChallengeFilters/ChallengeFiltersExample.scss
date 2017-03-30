@@ -63,20 +63,22 @@ $challenge-radius-4: $corner-radius * 2;
       border-top-right-radius: 4px;
       margin-top: 20px;
   }
-}
-.sidebar-container {
-  width: 30%;
-  padding: $challenge-space-10;
-  &.active {
-    position: relative;
-    right: 20px;
-  }
-  @include xs {
-    width: 100%;
-  }
-  &.srm {
-    @include xs-to-sm {
-      width: 100%;
+  .sidebar-container {
+    margin: $challenge-space-10;
+    &.xs-to-sm {
+      display: none;
+      @include xs-to-sm {
+        display: block;
+        margin: 0;
+        padding: $challenge-space-10;
+        width: 100%;
+      }
+    }
+    &.desktop {
+      width: 30%;
+      @include xs-to-sm {
+        display: none;
+      }
     }
   }
 }

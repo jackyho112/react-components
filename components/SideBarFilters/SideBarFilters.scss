@@ -39,13 +39,33 @@
       text-transform: none;
     }
   }
-
-  .rss-link {
-    display: block;
-    font-family: 'Roboto';
-    font-size: 13px;
-    color: $tc-gray-70;
-    line-height: 30px;
-    margin: 10px;
+  // sidebar footer
+  .sidebar-footer {
+    padding: 10px;
+    ul {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    li {
+      font-weight: 400;
+      font-size: 13px;
+      color: $tc-gray-70;
+      line-height: 30px;
+    }
+    li a {
+      font-weight: 400;
+      font-size: 13px;
+      color: $tc-gray-70;
+      display: inline-block;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+    .copyright {
+      font-weight: 500;
+      font-size: 13px;
+      color: $tc-gray-30;
+      line-height: 30px;
+    }
   }
 }

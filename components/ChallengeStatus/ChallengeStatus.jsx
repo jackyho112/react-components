@@ -40,18 +40,42 @@ const MAX_VISIBLE_WINNERS = 3
 const FORUM_URL = 'https://apps.topcoder.com/forums/?module=Category&categoryID='
 const CHALLENGE_URL = 'https://www.topcoder.com/challenge-details/'
 const STALLED_MSG = 'Stalled'
+const STALLED_TIME_LEFT_MSG = 'Challenge is currently on hold'
+const FF_TIME_LEFT_MSG = 'Winner is working on fixes'
 
-
-const getTimeLeft = (date) => {
+const getTimeLeft = (date, currentPhase) => {
+  if (!currentPhase || currentPhase === 'Stalled') {
+    return {
+      late: false,
+      text: STALLED_TIME_LEFT_MSG
+    }
+  } else if (currentPhase === 'Final Fix') {
+    return {
+      late: false,
+      text: FF_TIME_LEFT_MSG
+    }
+  }
   const duration = moment.duration(moment(date).diff(moment()))
-  const hour = duration.hours()
-  let hString = hour < 10 ? '0'+hour : hour;
-  hString = hour < 0 ? '-'+hString : hString;
-  const min = duration.minutes()
-  let mString = min < 10 ? '0'+min : min;
-  mString = min < 0 ? '-'+mString : mString;
-  const res = `${duration.days() > 0 ? `${duration.days()}d` : ''} ${hString}:${mString} h`
-  return res[1] === '-' ? 'Late' : `${res} to go`
+  const h = duration.hours()
+  const d = duration.days()
+  const m = duration.minutes()
+  const late = (d < 0 || h < 0 || m < 0)
+  const suffix = h != 0 ? 'h' : 'min'
+  let text = ''
+  if (d != 0) text += `${Math.abs(d)}d `
+  if (h != 0) text += `${Math.abs(h)}`
+  if (h != 0 && m != 0) text += ':'
+  if (m != 0) text += `${Math.abs(m)}`
+  text += suffix
+  if (late) {
+    text = `Late by ${text}`
+  } else {
+    text = `${text} to go`
+  }
+  return {
+    late,
+    text
+  }
 }
 
 const getTimeToGo = (start, end) => {
@@ -60,9 +84,6 @@ const getTimeToGo = (start, end) => {
 }
 
 function ChallengeStatus ({challenge, sampleWinnerProfile}) {
-
-  challenge.registered = Math.random() > .5
-
   const lastItem = {
     handle: `+${MOCK_WINNERS.length - MAX_VISIBLE_WINNERS}`
   }
@@ -80,11 +101,11 @@ function ChallengeStatus ({challenge, sampleWinnerProfile}) {
   })
 
   const renderRegisterButton = () => {
-    const lng = getTimeLeft(challenge.registrationEndDate).length
+    const lng = getTimeLeft(challenge.registrationEndDate || challenge.submissionEndDate, challenge.currentPhaseName).text.length
     return (
       challenge.registrationOpen === 'Yes' && !challenge.registered ?
       <a href="#" className="register-button">
-        {getTimeLeft(challenge.registrationEndDate).substring(0, lng-6)}
+        <span>{getTimeLeft(challenge.registrationEndDate || challenge.submissionEndDate, challenge.currentPhaseName).text.substring(0, lng-6)}</span>
         <span className="to-register">to register</span>
       </a>
       : <span></span>
@@ -118,15 +139,30 @@ function ChallengeStatus ({challenge, sampleWinnerProfile}) {
       return `${CHALLENGE_URL}${challenge.challengeId}/?type=${challenge.track.toLowerCase()}#viewRegistrant`;
     }
   }
+  const getStatusPhase = () => {
+    switch (challenge.currentPhaseName) {
+      case 'Registration':
+        return {
+          currentPhaseName: 'Submission',
+          currentPhaseEndDate: challenge.submissionEndDate
+        }
+      default:
+        return {
+          currentPhaseName: challenge.currentPhaseName,
+          currentPhaseEndDate: challenge.currentPhaseEndDate
+        }
+    }
+  }
+
   const activeChallenge = () => {
     return (
-      <div className={challenge.registered || challenge.registrationOpen !== 'Yes' ? 'challenge-progress' : 'challenge-progress with-register-button'}>
-        <span className="current-phase">{challenge.currentPhaseName ? challenge.currentPhaseName : STALLED_MSG}</span>
+      <div className={challenge.registrationOpen === 'Yes' ? 'challenge-progress with-register-button' : 'challenge-progress'}>
+        <span className="current-phase">{challenge.currentPhaseName ? getStatusPhase().currentPhaseName : STALLED_MSG}</span>
         <span className="challenge-stats">
           <span>
             <Tooltip content={numRegistrantsTipText(challenge.numRegistrants)} className="num-reg-tooltip">
               <a className="num-reg" href={registrantsLink(challenge, MM_REG)}>
-                <RegistrantsIcon/> <span className="number">{challenge.numRegistrants}</span>
+                <RegistrantsIcon className="challenge-stats-icon" /> <span className="number">{challenge.numRegistrants}</span>
               </a>
             </Tooltip>
           </span>
@@ -137,29 +173,30 @@ function ChallengeStatus ({challenge, sampleWinnerProfile}) {
               </a>
             </Tooltip>
           </span>
-
           {
-            challenge.registered === 'Active' ?
-            <span className={ challenge.registered ? '' : 'hidden'}>
-              <a className="link-forum" href={`${FORUM_URL}${challenge.forumId}`}><ForumIcon/></a>
+            challenge.myChallenge &&
+            <span>
+              <a className="link-forum" href={`${FORUM_URL}${challenge.forumId}`}>
+                <ForumIcon/>
+              </a>
             </span>
-            : renderRegisterButton()
           }
         </span>
         <ProgressBarTooltip challenge={challenge}>
           {
             challenge.status === 'Active' ?
             <div>
-              <ChallengeProgressBar color={challenge.status === 'Active' ? 'green' : 'gray'}
-                value={getTimeToGo(challenge.registrationStartDate, challenge.currentPhaseEndDate)}
-                isLate={getTimeLeft(challenge.currentPhaseEndDate) === 'Late'}
+              <ChallengeProgressBar color="green"
+                value={getTimeToGo(challenge.registrationStartDate, getStatusPhase().currentPhaseEndDate)}
+                isLate={getTimeLeft(getStatusPhase().currentPhaseEndDate, getStatusPhase().currentPhaseName).late}
               />
-              <div className="time-left">{getTimeLeft(challenge.currentPhaseEndDate)}</div>
+            <div className="time-left">{getTimeLeft(getStatusPhase().currentPhaseEndDate, getStatusPhase().currentPhaseName).text}</div>
             </div>
               :
             <ChallengeProgressBar color="gray" value="100"/>
           }
         </ProgressBarTooltip>
+        {challenge.registrationOpen === 'Yes' && renderRegisterButton()}
       </div>
     )
   }
@@ -171,21 +208,24 @@ function ChallengeStatus ({challenge, sampleWinnerProfile}) {
         <span className="challenge-stats">
           <span>
             <Tooltip content={numRegistrantsTipText(challenge.numRegistrants)}>
-              <a className="num-reg" href={`${CHALLENGE_URL}${challenge.challengeId}/?type=${challenge.track.toLowerCase()}#viewRegistrant`}>
+              <a className="num-reg past" href={`${CHALLENGE_URL}${challenge.challengeId}/?type=${challenge.track.toLowerCase()}#viewRegistrant`}>
                 <RegistrantsIcon/> <span className="number">{challenge.numRegistrants}</span>
               </a>
             </Tooltip>
           </span>
           <span>
             <Tooltip content={numSubmissionsTipText(challenge.numSubmissions)}>
-              <a className="num-sub" href={`${CHALLENGE_URL}${challenge.challengeId}/?type=${challenge.track.toLowerCase()}#viewRegistrant`}>
+              <a className="num-sub past" href={`${CHALLENGE_URL}${challenge.challengeId}/?type=${challenge.track.toLowerCase()}#viewRegistrant`}>
                 <SubmissionsIcon/> <span className="number">{challenge.numSubmissions}</span>
               </a>
             </Tooltip>
           </span>
-          <span className={ challenge.registered ? '' : 'hidden'}>
-            <a className="link-forum" href={`${FORUM_URL}${challenge.forumId}`}><ForumIcon/></a>
-          </span>
+          {
+            challenge.myChallenge &&
+            <span>
+              <a className="link-forum past" href={`${FORUM_URL}${challenge.forumId}`}><ForumIcon/></a>
+            </span>
+          }
         </span>
       </div>
     )
