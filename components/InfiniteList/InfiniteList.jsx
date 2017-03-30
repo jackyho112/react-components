@@ -134,6 +134,7 @@ class InfiniteList extends Component {
     const { cachedPassedInItems, items: { length: itemNumber } } = this;
 
     if (cachedPassedInItems.length === 0) {
+      console.log(this.currentPageIndex + 1)
       return fetchItems(this.currentPageIndex + 1);
     } else {
       this.cachedPassedInItems = cachedPassedInItems.slice(batchNumber);

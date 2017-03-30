@@ -8,11 +8,12 @@ export function getChallengeCardPlaceholder(id) {
   );
 }
 
-export function getChallengeCard(id, challenge, onTechTagClicked) {
+export function getChallengeCard(id, challenge, config, onTechTagClicked) {
   return (
     <ChallengeCard
       challenge={challenge}
       onTechTagClicked={onTechTagClicked}
+      config={config}
       key={id}
     />
   );

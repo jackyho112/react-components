@@ -159,6 +159,7 @@ class ChallengeCardContainer extends Component {
                   }
                   renderItem={_.partialRight(
                     getChallengeCard,
+                    this.props.config,
                     tag => this.props.onTechTagClicked(tag)
                   )}
                   renderItemTemplate={getChallengeCardPlaceholder}
@@ -190,6 +191,7 @@ ChallengeCardContainer.defaultProps = {
   challenges: [],
   expanded: false,
   fetchCallback: _.noop,
+  config: {},
 };
 
 ChallengeCardContainer.propTypes = {
@@ -208,6 +210,7 @@ ChallengeCardContainer.propTypes = {
   })),
   expanded: oneOfType([bool, string]),
   fetchCallback: func,
+  config: object,
 };
 
 export default ChallengeCardContainer;

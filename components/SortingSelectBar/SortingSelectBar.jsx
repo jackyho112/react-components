@@ -1,5 +1,6 @@
 import _ from 'lodash';
-import React, { Component } from 'react';
+import React, { Component, PropTypes as PT } from 'react';
+import Dropdown from 'react-dropdown'
 import './SortingSelectBar.scss';
 
 const { string, arrayOf, func } = React.PropTypes;
@@ -53,13 +54,12 @@ class SortingSelectBar extends Component {
           <p className="view-options-toggle-container-label">
             Sort by:
           </p>
-          <button
-            className="view-options-toggle"
-            onClick={() => this.setState({ optionsVisible: !this.state.optionsVisible })}
-          >
-            {selectedSortingOption}
-            <div className="down-arrow" />
-          </button>
+          <Dropdown
+            options={sortingOptions}
+            onChange={optionName => this.onSelectOption(optionName.value)}
+            value={selectedSortingOption}
+            placeholder="Select an option"
+          />
         </div>
         {options}
       </div>
@@ -75,10 +75,9 @@ SortingSelectBar.defaultProps = {
 };
 
 SortingSelectBar.propTypes = {
-  filterName: string,
-  sortingOptions: arrayOf(string),
-  onSortingSelect: func,
-  value: string,
+  filterName: PT.string,
+  sortingOptions: PT.arrayOf(PT.string),
+  onSortingSelect: PT.func
 };
 
 export default SortingSelectBar;

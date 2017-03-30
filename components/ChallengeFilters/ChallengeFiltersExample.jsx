@@ -28,11 +28,6 @@ import ChallengesSidebar from '../ChallengesSidebar/ChallengesSidebar';
 import '../ChallengeCard/ChallengeCard.scss';
 
 /**
- * Base API version 3 URL
- */
-const API_V3 = `https://api.topcoder.com/v3/srms`
-
-/**
  * Helper function for generation of VALID_KEYWORDS and VALID_TRACKS arrays.
  * @param {String} keyword
  * @return {Object} The valid object to include into the array which will be
@@ -131,7 +126,7 @@ class ChallengeFiltersExample extends React.Component {
     this.fetchChallenges(0).then(res => this.setChallenges(0, res));
 
     /* Fetching of SRM challenges */
-    fetch(`${API_V3}/?filter=status=FUTURE`)
+    fetch(`${props.config.API_URL}/srms/?filter=status=FUTURE`)
       .then(res => res.json())
       .then((json) => {
         this.setState({srmChallenges: json.result.content})
@@ -353,6 +348,7 @@ class ChallengeFiltersExample extends React.Component {
       const cardify = challenge => (
         <ChallengeCard
           challenge={challenge}
+          config={this.props.config}
           onTechTagClicked={(tag) => {
             if (this.challengeFilters) this.challengeFilters.setKeywords(tag);
           }}
@@ -370,6 +366,7 @@ class ChallengeFiltersExample extends React.Component {
     } else {
       challengeCardContainer = (
         <ChallengeCardContainer
+          config={this.props.config}
           onTechTagClicked={(tag) => this.challengeFilters.setKeywords(tag)}
           challenges={unfilteredChallenges}
           currentFilterName={sidebarFilterName}
@@ -437,18 +434,20 @@ class ChallengeFiltersExample extends React.Component {
             </div>
           </div>
 
-          <div className="sidebar-container srm">
+          <Sticky
+            className="sidebar-container desktop"
+            top={20}
+          >
             <ChallengesSidebar SidebarMock={SRMsSidebarMock} />
-          </div>
+          </Sticky>
         </div>
 
         <div className={`tc-content-wrapper ${this.state.currentCardType === 'Challenges' ? '' : 'hidden'}`}>
           {challengeCardContainer}
 
           <Sticky
-            className="sidebar-container"
-            enableTransforms={false}
-            top={18}
+            className="sidebar-container desktop"
+            top={20}
           >
             <SideBarFilters
               challenges={challenges}

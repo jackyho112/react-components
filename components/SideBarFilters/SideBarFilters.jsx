@@ -279,7 +279,17 @@ class SideBarFilters extends React.Component {
               </span> : ''
           }
         </div>
-        <a className="rss-link" href={RSS_LINK} target="_blank">Get the RSS feed</a>
+        <div className="sidebar-footer">
+          <ul>
+            <li><a href="javascript:;">About</a>&nbsp;•&nbsp;</li>
+            <li><a href="javascript:;">Contact</a>&nbsp;•&nbsp;</li>
+            <li><a href="javascript:;">Help</a>&nbsp;•&nbsp;</li>
+            <li><a href="javascript:;">Privacy</a>&nbsp;•&nbsp;</li>
+            <li><a href="javascript:;">Terms</a>&nbsp;•&nbsp;</li>
+            <li><a href="javascript:;">Get the RSS</a></li>
+          </ul>
+          <p className="copyright">Topcoder © 2016.</p>
+        </div>
       </div>
     );
   }
